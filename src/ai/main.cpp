@@ -1,9 +1,17 @@
 #include <renderer.hpp>
 
-int main() {
+#include <llm.hpp>
+#include <sd.hpp>
+
+int main()
+{
   Renderer renderer("asd");
 
-  while (renderer.Window::update()) {
+  // LLM llm("/home/samthedev/models/zephyr_q4.gguf", "The weebest thing is ");
+  SD sd("/home/samthedev/models/sd_q4.gguf");
+
+  while (renderer.Window::update())
+  {
     if (renderer.key("esc"))
       renderer.exit();
 

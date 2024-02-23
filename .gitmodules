@@ -1,0 +1,9 @@
+[submodule "src/ai/external/llama.cpp"]
+	path = src/ai/external/llama.cpp
+	url = https://github.com/ggerganov/llama.cpp
+[submodule "src/ai/external/stable-diffusion.cpp"]
+	path = src/ai/external/stable-diffusion.cpp
+	url = https://github.com/leejet/stable-diffusion.cpp
+[submodule "src/ai/external/whisper.cpp"]
+	path = src/ai/external/whisper.cpp
+	url = https://github.com/ggerganov/whisper.cpp
