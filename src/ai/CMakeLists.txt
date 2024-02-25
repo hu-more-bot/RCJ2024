@@ -12,8 +12,8 @@ set(SOURCES
     src/renderer.cpp
 
     # AI
-    src/llm.cpp
     src/sd.cpp
+    src/llm.cpp
 
     src/GL/glad.c
 )
@@ -30,9 +30,7 @@ set(LIBRARIES
     # AI
     llama
     common
-
-    # ggml
-    # stable-diffusion
+    
     # whisper
 )
 

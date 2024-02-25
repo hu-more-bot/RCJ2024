@@ -1,13 +1,9 @@
 #pragma once
 
-#include <stable-diffusion.h>
+#include <string>
 
-// Wrapper Class for the stable-diffusion.cpp library
-class SD
+namespace SD
 {
-public:
-    SD(const char *model);
-    ~SD();
-
-private:
-};
+    int txt2img(std::string model, std::string prompt, std::string out = "output.png");
+    int img2img(std::string model, std::string prompt, std::string in, std::string out = "output.png");
+}
