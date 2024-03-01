@@ -14,6 +14,7 @@ set(SOURCES
     # AI
     src/sd.cpp
     src/llm.cpp
+    src/tts.cpp
 
     src/GL/glad.c
 )

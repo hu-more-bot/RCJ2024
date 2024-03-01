@@ -7,6 +7,7 @@ LLM::LLM(const char *model, const char *prompt)
 
     params.model = model;
     params.prompt = prompt;
+    params.interactive = true;
 
     // total length of the sequence including the prompt (default: 32)
     const int n_len = 256;
