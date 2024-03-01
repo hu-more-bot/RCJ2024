@@ -1,5 +1,3 @@
-#include <renderer.hpp>
-
 #include <llm.hpp>
 #include <sd.hpp>
 
