@@ -13,7 +13,7 @@ An AI Painter... TODO
 
 ## Models
 
-- TTS: [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices) (hu: TODO, en_us: TODO)
+- TTS: [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices) (hu: *imre*, en: *kusal*)
 - STT: [TODO](TODO)
 - LLM: [HuggingFaceH4/zephyr-7b-alpha](https://huggingface.co/HuggingFaceH4/zephyr-7b-alpha)
 - Image Gen: [TODO](TODO)

@@ -7,8 +7,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 set(SOURCES
     main.cpp
 
+    # UI
     src/window.cpp
     src/renderer.cpp
+
+    # AI
+    src/sd.cpp
+    src/llm.cpp
 
     src/GL/glad.c
 )
@@ -23,8 +28,10 @@ set(LIBRARIES
     glfw
     
     # AI
-    # llama
-    # stable-diffusion
+    llama
+    common
+    
+    # whisper
 )
 
 # Project (Library)
@@ -32,7 +39,8 @@ project(RCJ2024 VERSION 0.1.0 LANGUAGES C CXX)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_link_libraries(${PROJECT_NAME} ${LIBRARIES})
+
+target_link_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-# Examples
 add_subdirectory(lib)
