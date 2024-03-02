@@ -1,90 +1,183 @@
-#include <iostream>
+/** @file paex_sine.c
+    @ingroup examples_src
+    @brief Play a sine wave for several seconds.
+    @author Ross Bencina <rossb@audiomulch.com>
+    @author Phil Burk <philburk@softsynth.com>
+*/
+/*
+ * $Id$
+ *
+ * This program uses the PortAudio Portable Audio Library.
+ * For more information see: http://www.portaudio.com/
+ * Copyright (c) 1999-2000 Ross Bencina and Phil Burk
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files
+ * (the "Software"), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge,
+ * publish, distribute, sublicense, and/or sell copies of the Software,
+ * and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR
+ * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/*
+ * The text above constitutes the entire PortAudio license; however,
+ * the PortAudio community also makes the following non-binding requests:
+ *
+ * Any person wishing to distribute modifications to the Software is
+ * requested to send the modifications to the original developer so that
+ * they can be incorporated into the canonical version. It is also
+ * requested that these non-binding requests be included along with the
+ * license above.
+ */
+#include <stdio.h>
+#include <math.h>
 #include "portaudio.h"
 
-#define SAMPLE_RATE 44100
-#define FRAMES_PER_BUFFER 64
+#define NUM_SECONDS (5)
+#define SAMPLE_RATE (44100)
+#define FRAMES_PER_BUFFER (64)
 
-// This is your audio buffer, you need to replace it with your actual audio data
-// For demonstration purposes, I'll just use a simple sine wave
-float audioBuffer[44100]; // Assuming 1 second of audio at 44100 Hz
+#ifndef M_PI
+#define M_PI (3.14159265)
+#endif
 
-// Callback function called by PortAudio when it needs more audio data
-static int paCallback(const void *inputBuffer, void *outputBuffer,
-                      unsigned long framesPerBuffer,
-                      const PaStreamCallbackTimeInfo *timeInfo,
-                      PaStreamCallbackFlags statusFlags,
-                      void *userData)
+#define TABLE_SIZE (200)
+typedef struct
 {
-    float *out = (float *)outputBuffer;
-    unsigned int i;
+    float sine[TABLE_SIZE];
+    int left_phase;
+    int right_phase;
+    char message[20];
+} paTestData;
 
-    // Copy audio data from your buffer to the output buffer
+/* This routine will be called by the PortAudio engine when audio is needed.
+** It may called at interrupt level on some machines so don't do anything
+** that could mess up the system like calling malloc() or free().
+*/
+static int patestCallback(const void *inputBuffer, void *outputBuffer,
+                          unsigned long framesPerBuffer,
+                          const PaStreamCallbackTimeInfo *timeInfo,
+                          PaStreamCallbackFlags statusFlags,
+                          void *userData)
+{
+    paTestData *data = (paTestData *)userData;
+    float *out = (float *)outputBuffer;
+    unsigned long i;
+
+    (void)timeInfo; /* Prevent unused variable warnings. */
+    (void)statusFlags;
+    (void)inputBuffer;
+
     for (i = 0; i < framesPerBuffer; i++)
     {
-        *out++ = audioBuffer[i]; // Assuming mono audio
+        *out++ = data->sine[data->left_phase];  /* left */
+        *out++ = data->sine[data->right_phase]; /* right */
+        data->left_phase += 1;
+        if (data->left_phase >= TABLE_SIZE)
+            data->left_phase -= TABLE_SIZE;
+        data->right_phase += 3; /* higher pitch so we can distinguish left and right. */
+        if (data->right_phase >= TABLE_SIZE)
+            data->right_phase -= TABLE_SIZE;
     }
 
     return paContinue;
 }
 
-int main()
+/*
+ * This routine is called by portaudio when playback is done.
+ */
+static void StreamFinished(void *userData)
 {
-    PaError err;
-    PaStream *stream;
+    paTestData *data = (paTestData *)userData;
+    printf("Stream Completed: %s\n", data->message);
+}
 
-    // Initialize PortAudio
+/*******************************************************************/
+int main(void);
+int main(void)
+{
+    PaStreamParameters outputParameters;
+    PaStream *stream;
+    PaError err;
+    paTestData data;
+    int i;
+
+    printf("PortAudio Test: output sine wave. SR = %d, BufSize = %d\n", SAMPLE_RATE, FRAMES_PER_BUFFER);
+
+    /* initialise sinusoidal wavetable */
+    for (i = 0; i < TABLE_SIZE; i++)
+    {
+        data.sine[i] = (float)sin(((double)i / (double)TABLE_SIZE) * M_PI * 2.);
+    }
+    data.left_phase = data.right_phase = 0;
+
     err = Pa_Initialize();
     if (err != paNoError)
-    {
-        std::cerr << "PortAudio error: " << Pa_GetErrorText(err) << std::endl;
-        return 1;
-    }
+        goto error;
 
-    // Open a stream for audio output
-    err = Pa_OpenDefaultStream(&stream,
-                               0,         // no input channels
-                               1,         // mono output
-                               paFloat32, // 32 bit floating point output
-                               SAMPLE_RATE,
-                               FRAMES_PER_BUFFER,
-                               paCallback,
-                               nullptr); // no user data
+    outputParameters.device = Pa_GetDefaultOutputDevice(); /* default output device */
+    if (outputParameters.device == paNoDevice)
+    {
+        fprintf(stderr, "Error: No default output device.\n");
+        goto error;
+    }
+    outputParameters.channelCount = 2;         /* stereo output */
+    outputParameters.sampleFormat = paFloat32; /* 32 bit floating point output */
+    outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
+    outputParameters.hostApiSpecificStreamInfo = NULL;
+
+    err = Pa_OpenStream(
+        &stream,
+        NULL, /* no input */
+        &outputParameters,
+        SAMPLE_RATE,
+        FRAMES_PER_BUFFER,
+        paClipOff, /* we won't output out of range samples so don't bother clipping them */
+        patestCallback,
+        &data);
     if (err != paNoError)
-    {
-        std::cerr << "PortAudio error: " << Pa_GetErrorText(err) << std::endl;
-        Pa_Terminate();
-        return 1;
-    }
+        goto error;
 
-    // Start the stream
+    sprintf(data.message, "No Message");
+    err = Pa_SetStreamFinishedCallback(stream, &StreamFinished);
+    if (err != paNoError)
+        goto error;
+
     err = Pa_StartStream(stream);
     if (err != paNoError)
-    {
-        std::cerr << "PortAudio error: " << Pa_GetErrorText(err) << std::endl;
-        Pa_CloseStream(stream);
-        Pa_Terminate();
-        return 1;
-    }
+        goto error;
 
-    // Wait for the user to press Enter before quitting
-    std::cout << "Press Enter to quit..." << std::endl;
-    std::cin.get();
+    printf("Play for %d seconds.\n", NUM_SECONDS);
+    Pa_Sleep(NUM_SECONDS * 1000);
 
-    // Stop and close the stream
     err = Pa_StopStream(stream);
     if (err != paNoError)
-    {
-        std::cerr << "PortAudio error: " << Pa_GetErrorText(err) << std::endl;
-    }
+        goto error;
 
     err = Pa_CloseStream(stream);
     if (err != paNoError)
-    {
-        std::cerr << "PortAudio error: " << Pa_GetErrorText(err) << std::endl;
-    }
+        goto error;
 
-    // Terminate PortAudio
     Pa_Terminate();
+    printf("Test finished.\n");
 
-    return 0;
+    return err;
+error:
+    Pa_Terminate();
+    fprintf(stderr, "An error occurred while using the portaudio stream\n");
+    fprintf(stderr, "Error number: %d\n", err);
+    fprintf(stderr, "Error message: %s\n", Pa_GetErrorText(err));
+    return err;
 }
