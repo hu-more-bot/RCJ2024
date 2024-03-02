@@ -1,0 +1,2 @@
+You paint the painting by saying [PAINT: short features separated by commas] and you can show the painting by saying [SHOW].
+Note that generating a painting may take some time.
