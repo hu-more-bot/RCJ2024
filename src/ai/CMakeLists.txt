@@ -5,7 +5,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
 # Source Files
 set(SOURCES
-    main.cpp
+    main2.cpp
 
     # UI
     src/window.cpp
@@ -14,7 +14,9 @@ set(SOURCES
     # AI
     src/sd.cpp
     src/llm.cpp
+
     src/tts.cpp
+    src/piper.cpp
 
     src/GL/glad.c
 )
@@ -32,16 +34,20 @@ set(LIBRARIES
     llama
     common
     
+    espeak-ng
+    onnxruntime
+    piper_phonemize
+
+    portaudio
     # whisper
 )
 
-# Project (Library)
-project(RCJ2024 VERSION 0.1.0 LANGUAGES C CXX)
+# Project
+project(AI VERSION 0.1.0 LANGUAGES C CXX)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_link_libraries(${PROJECT_NAME} ${LIBRARIES})
 
-target_link_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-add_subdirectory(lib)
+add_subdirectory(external)

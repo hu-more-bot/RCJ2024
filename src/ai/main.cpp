@@ -1,30 +1,34 @@
 #include <llm.hpp>
 #include <sd.hpp>
+#include <tts.hpp>
 
 #include <thread>
-
-const struct {
-  const char *llm = "../models/zephyr_q4.gguf";
-  const char *prompt = "../llm-prompt.txt";
-
-  const char *sd = "../models/sd-v1-4.ckpt";
-
-  // const char *ss = "../models/whisper...";
-  // const char *tts = "../models/piper...";
-} PATH;
+#include <string.h>
 
 // Load Prompt from File
 char *loadPrompt(const char *path);
 
-// Generate Image
-void sd_draw(std::string prompt) { SD::txt2img(PATH.sd, prompt); }
+int main()
+{
+  // Renderer renderer("asd");
 
-int main() {
-  Renderer renderer("asd");
+  // std::thread render(SD::txt2img, "../models/...", "prompt");
 
-  // std::thread render(sd_draw, "dog");
+  // Get Model: https://drive.google.com/file/d/1AZNDte9PkblvUFBlB5xSxM9dXoHY1pwM
+  LLM llm("../models/zephyr_q4.gguf", loadPrompt("../prompts/prompt-en.txt"));
 
-  LLM llm(PATH.llm, loadPrompt(PATH.prompt));
+  TTS tts("../models/piper/kusal.onnx");
+
+  while (true)
+  {
+    char user_in[128];
+    memset(user_in, 0, sizeof(user_in));
+    fgets(user_in, sizeof(user_in), stdin);
+
+    std::string response = llm.reply(user_in);
+
+    auto buf = tts.say(response);
+  }
 
   // while (renderer.Window::update())
   // {
@@ -43,10 +47,12 @@ int main() {
   return 0;
 }
 
-char *loadPrompt(const char *path) {
+char *loadPrompt(const char *path)
+{
   // Open File
   FILE *f = NULL;
-  if (!(f = fopen(path, "r"))) {
+  if (!(f = fopen(path, "r")))
+  {
     printf("Failed to open file: %s\n", path);
     return NULL;
   }
@@ -59,7 +65,8 @@ char *loadPrompt(const char *path) {
   // Read File
   char *prompt = (char *)malloc(sizeof(char) * size);
 
-  if (!fread(prompt, size, 1, f)) {
+  if (!fread(prompt, size, 1, f))
+  {
     printf("Failed to read file: %s\n", path);
     free(prompt);
     return NULL;

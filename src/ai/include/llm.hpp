@@ -4,18 +4,24 @@
 #include <string>
 
 // Wrapper Class for the llama.cpp library
-class LLM {
+class LLM
+{
 public:
   LLM(const char *model, const char *prompt);
   ~LLM();
 
-    // Use in loop for chat-like behaviour
-    std::string reply(std::string prompt);
+  // Use in loop for chat-like behaviour
+  std::string reply(std::string prompt);
 
 private:
-  struct {
+  bool decode(std::string text);
+
+  struct
+  {
     llama_model *model{};
     llama_context *ctx{};
     llama_batch batch{};
-  } llama;
+
+    int n_cur{};
+  } llm;
 };

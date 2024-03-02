@@ -1,8 +1,20 @@
 #pragma once
 
-#include <string>
+#include "piper.hpp"
 
-namespace SD
+class TTS
 {
-    int generate(std::string model, std::string text, std::string out = "output.png");
-}
+public:
+    TTS(const char *model, const char *eSpeakData = "../models/piper/espeak-ng-data");
+    ~TTS();
+
+    std::vector<int16_t> say(std::string text);
+    bool sayToFile(std::string text, const char *output);
+
+private:
+    struct
+    {
+        piper::PiperConfig config;
+        piper::Voice voice;
+    } tts;
+};

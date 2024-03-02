@@ -1,177 +1,131 @@
 #include <llm.hpp>
-#include <common/common.h>
+#include <common.h>
+
+#include <stdexcept>
 
 LLM::LLM(const char *model, const char *prompt)
 {
-    gpt_params params;
+    printf("Loading LLM...\n");
 
-    params.model = model;
-    params.prompt = prompt;
-    params.interactive = true;
-
-    // total length of the sequence including the prompt (default: 32)
-    const int n_len = 256;
+    const int n_len = 32;
 
     // init LLM
-
     llama_backend_init();
-    llama_numa_init(params.numa);
+    llama_numa_init(GGML_NUMA_STRATEGY_DISABLED);
 
     // initialize the model
-
     llama_model_params model_params = llama_model_default_params();
 
     // model_params.n_gpu_layers = 99; // offload all layers to the GPU
+    llm.model = llama_load_model_from_file(model, model_params);
 
-    llama.model = llama_load_model_from_file(params.model.c_str(), model_params);
-
-    if (llama.model == NULL)
-    {
-        fprintf(stderr, "%s: error: unable to load model\n", __func__);
-        exit(1);
-    }
+    if (model == NULL)
+        throw std::runtime_error(std::string(__func__) + ": unable to load model");
 
     // initialize the context
-
     llama_context_params ctx_params = llama_context_default_params();
 
-    ctx_params.seed = 1234;
+    ctx_params.seed = -1;
     ctx_params.n_ctx = 2048;
-    ctx_params.n_threads = params.n_threads;
-    ctx_params.n_threads_batch = params.n_threads_batch == -1 ? params.n_threads : params.n_threads_batch;
+    ctx_params.n_threads = ctx_params.n_threads_batch = get_num_physical_cores();
 
-    llama.ctx = llama_new_context_with_model(llama.model, ctx_params);
+    llm.ctx = llama_new_context_with_model(llm.model, ctx_params);
 
-    if (llama.ctx == NULL)
-    {
-        fprintf(stderr, "%s: error: failed to create the llama_context\n", __func__);
-        exit(1);
-    }
+    if (llm.ctx == NULL)
+        throw std::runtime_error(std::string(__func__) + ": failed to create the llama_context");
 
-    // tokenize the prompt
+    // Create Batch
+    llm.batch = llama_batch_init(512, 0, 1);
 
-    std::vector<llama_token> tokens_list;
-    tokens_list = ::llama_tokenize(llama.ctx, params.prompt, true);
+    // Process Prompt
+    decode("<|system|>\n" + std::string(prompt) + "</s>\n" + "<|ai painter|>\n");
 
-    const int n_ctx = llama_n_ctx(llama.ctx);
-    const int n_kv_req = tokens_list.size() + (n_len - tokens_list.size());
+    // llama_batch_clear(batch);
 
-    LOG_TEE("\n%s: n_len = %d, n_ctx = %d, n_kv_req = %d\n", __func__, n_len, n_ctx, n_kv_req);
+    printf("\n<|system|>\n%s\n", prompt);
+}
 
-    // make sure the KV cache is big enough to hold all the prompt and generated tokens
-    if (n_kv_req > n_ctx)
-    {
-        LOG_TEE("%s: error: n_kv_req > n_ctx, the required KV cache size is not big enough\n", __func__);
-        LOG_TEE("%s:        either reduce n_len or increase n_ctx\n", __func__);
-        exit(1);
-    }
+LLM::~LLM()
+{
+    llama_batch_free(llm.batch);
 
-    // print the prompt token-by-token
+    llama_free(llm.ctx);
+    llama_free_model(llm.model);
 
-    fprintf(stderr, "\n");
+    llama_backend_free();
+}
 
-    for (auto id : tokens_list)
-    {
-        fprintf(stderr, "%s", llama_token_to_piece(llama.ctx, id).c_str());
-    }
+std::string LLM::reply(std::string prompt)
+{
+    // Get User Input
+    printf("<|user|> (n_cur=%i)\n%s\n<|ai painter|>\n", llm.n_cur, prompt.c_str());
+    decode("<|user|>\n" + prompt + "</s>\n" + "<|ai painter|>\n");
 
-    fflush(stderr);
-
-    // create a llama_batch with size 512
-    // we use this object to submit token data for decoding
-
-    llama.batch = llama_batch_init(512, 0, 1);
-
-    // evaluate the initial prompt
-    for (size_t i = 0; i < tokens_list.size(); i++)
-    {
-        llama_batch_add(llama.batch, tokens_list[i], i, {0}, false);
-    }
-
-    // llama_decode will output logits only for the last token of the prompt
-    llama.batch.logits[llama.batch.n_tokens - 1] = true;
-
-    if (llama_decode(llama.ctx, llama.batch) != 0)
-    {
-        LOG_TEE("%s: llama_decode() failed\n", __func__);
-        exit(1);
-    }
-
-    // main loop
-
-    int n_cur = llama.batch.n_tokens;
-    int n_decode = 0;
-
-    const auto t_main_start = ggml_time_us();
-
-    while (n_cur <= n_len)
+    while (true)
     {
         // sample the next token
         {
-            auto n_vocab = llama_n_vocab(llama.model);
-            auto *logits = llama_get_logits_ith(llama.ctx, llama.batch.n_tokens - 1);
+            auto n_vocab = llama_n_vocab(llm.model);
+            auto *logits = llama_get_logits_ith(llm.ctx, llm.batch.n_tokens - 1);
 
             std::vector<llama_token_data> candidates;
             candidates.reserve(n_vocab);
 
             for (llama_token token_id = 0; token_id < n_vocab; token_id++)
-            {
                 candidates.emplace_back(llama_token_data{token_id, logits[token_id], 0.0f});
-            }
 
-            llama_token_data_array candidates_p = {candidates.data(), candidates.size(), false};
+            llama_token_data_array candidates_p = {candidates.data(),
+                                                   candidates.size(), false};
 
             // sample the most likely token
-            const llama_token new_token_id = llama_sample_token_greedy(llama.ctx, &candidates_p);
+            const llama_token new_token_id =
+                llama_sample_token_greedy(llm.ctx, &candidates_p);
 
             // is it an end of stream?
-            if (new_token_id == llama_token_eos(llama.model) || n_cur == n_len)
+            if (new_token_id == llama_token_eos(llm.model)) // || n_cur == n_len)
             {
-                LOG_TEE("\n");
-
+                printf("\n");
                 break;
             }
 
-            LOG_TEE("%s", llama_token_to_piece(llama.ctx, new_token_id).c_str());
+            printf("%s", llama_token_to_piece(llm.ctx, new_token_id).c_str());
             fflush(stdout);
 
             // prepare the next batch
-            llama_batch_clear(llama.batch);
+            llama_batch_clear(llm.batch);
 
             // push this new token for next evaluation
-            llama_batch_add(llama.batch, new_token_id, n_cur, {0}, true);
-
-            n_decode += 1;
+            llama_batch_add(llm.batch, new_token_id, llm.n_cur, {0}, true);
         }
 
-        n_cur += 1;
+        llm.n_cur += 1;
 
         // evaluate the current batch with the transformer model
-        if (llama_decode(llama.ctx, llama.batch))
-        {
-            fprintf(stderr, "%s : failed to eval, return code %d\n", __func__, 1);
-            exit(1);
-        }
+        if (llama_decode(llm.ctx, llm.batch))
+            throw std::runtime_error(std::string(__func__) + ": failed to eval");
     }
 
-    LOG_TEE("\n");
-
-    const auto t_main_end = ggml_time_us();
-
-    LOG_TEE("%s: decoded %d tokens in %.2f s, speed: %.2f t/s\n",
-            __func__, n_decode, (t_main_end - t_main_start) / 1000000.0f, n_decode / ((t_main_end - t_main_start) / 1000000.0f));
-
-    llama_print_timings(llama.ctx);
-
-    fprintf(stderr, "\n");
+    llama_batch_clear(llm.batch);
 }
 
-LLM::~LLM()
+bool LLM::decode(std::string text)
 {
-    llama_batch_free(llama.batch);
+    std::vector<llama_token> tokens = ::llama_tokenize(llm.ctx, text, true);
 
-    llama_free(llama.ctx);
-    llama_free_model(llama.model);
+    for (size_t i = 0; i < tokens.size(); i++)
+        llama_batch_add(llm.batch, tokens[i], llm.n_cur + i, {0}, false);
 
-    llama_backend_free();
+    llm.n_cur += tokens.size();
+
+    llm.batch.logits[llm.batch.n_tokens - 1] = true;
+
+    if (llama_decode(llm.ctx, llm.batch) != 0)
+    {
+        fprintf(stderr, "%s: llama_decode() failed\n", __func__);
+        return true;
+    }
+
+    llm.batch.logits[llm.batch.n_tokens - 1] = false;
+
+    return false;
 }
