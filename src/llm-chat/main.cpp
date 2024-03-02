@@ -2,20 +2,10 @@
 #include <tts.hpp>
 #include <al.hpp>
 
-#include <sd-server.hpp>
-#include <thread>
+#include <sd-client.hpp>
 
 // Load Prompt from File
 char *loadPrompt(const char *path);
-
-static void upd(SDServer *s)
-{
-  char in[128];
-  memset(in, 0, sizeof(in));
-  fgets(in, sizeof(in), stdin);
-  printf("starting: %s\n", in);
-  s->send(in);
-}
 
 int main()
 {
@@ -25,12 +15,7 @@ int main()
   // TTS tts("../models/piper/kusal.onnx");
   // AL al;
 
-  SDServer sd;
-
-  std::thread up(upd, &sd);
-
-  while (true)
-    sd.update();
+  SDClient sd;
 
   while (true)
   {

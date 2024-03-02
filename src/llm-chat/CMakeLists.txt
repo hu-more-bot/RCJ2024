@@ -13,8 +13,8 @@ set(SOURCES
     src/tts.cpp
     src/piper.cpp
     src/al.cpp
-    
-    src/sd-server.cpp
+
+    src/sd-client.cpp
 )
 
 # Libraries

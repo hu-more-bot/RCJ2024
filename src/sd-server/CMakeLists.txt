@@ -14,6 +14,7 @@ set(SOURCES
     # AI
     src/sd.cpp
   
+    src/sd-server.cpp
     src/GL/glad.c
 )
 
@@ -26,6 +27,10 @@ set(LIBRARIES
     # UI
     GL
     glfw
+
+    # AI
+    stable-diffusion
+    ggml
 )
 
 # Project
