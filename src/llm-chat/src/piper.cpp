@@ -7,7 +7,7 @@
 
 #include <espeak-ng/speak_lib.h>
 #include <onnxruntime_cxx_api.h>
-#include <spdlog/spdlog.h>
+// #include <spdlog/spdlog.h>
 
 #include "json.hpp"
 #include "piper.hpp"
@@ -97,8 +97,8 @@ namespace piper
             idsStr << toId << ",";
           }
 
-          spdlog::error("\"{}\" is not a single codepoint (ids={})", fromPhoneme,
-                        idsStr.str());
+          // spdlog::error("\"{}\" is not a single codepoint (ids={})", fromPhoneme,
+          //               idsStr.str());
           throw std::runtime_error(
               "Phonemes must be one codepoint (phoneme id map)");
         }
@@ -127,7 +127,7 @@ namespace piper
         std::string fromPhoneme = fromPhonemeItem.key();
         if (!isSingleCodepoint(fromPhoneme))
         {
-          spdlog::error("\"{}\" is not a single codepoint", fromPhoneme);
+          // spdlog::error("\"{}\" is not a single codepoint", fromPhoneme);
           throw std::runtime_error(
               "Phonemes must be one codepoint (phoneme map)");
         }
@@ -207,7 +207,7 @@ namespace piper
           std::string phonemeStr = phonemeItem.key();
           if (!isSingleCodepoint(phonemeStr))
           {
-            spdlog::error("\"{}\" is not a single codepoint", phonemeStr);
+            // spdlog::error("\"{}\" is not a single codepoint", phonemeStr);
             throw std::runtime_error(
                 "Phonemes must be one codepoint (phoneme silence)");
           }
@@ -252,7 +252,7 @@ namespace piper
     {
       // Set up espeak-ng for calling espeak_TextToPhonemesWithTerminator
       // See: https://github.com/rhasspy/espeak-ng
-      spdlog::debug("Initializing eSpeak");
+      // spdlog::debug("Initializing eSpeak");
       int result = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS,
                                      /*buflength*/ 0,
                                      /*path*/ config.eSpeakDataPath.c_str(),
@@ -262,28 +262,28 @@ namespace piper
         throw std::runtime_error("Failed to initialize eSpeak-ng");
       }
 
-      spdlog::debug("Initialized eSpeak");
+      // spdlog::debug("Initialized eSpeak");
     }
 
     // Load onnx model for libtashkeel
     // https://github.com/mush42/libtashkeel/
     if (config.useTashkeel)
     {
-      spdlog::debug("Using libtashkeel for diacritization");
+      // spdlog::debug("Using libtashkeel for diacritization");
       if (!config.tashkeelModelPath)
       {
         throw std::runtime_error("No path to libtashkeel model");
       }
 
-      spdlog::debug("Loading libtashkeel model from {}",
-                    config.tashkeelModelPath.value());
+      // spdlog::debug("Loading libtashkeel model from {}",
+      // config.tashkeelModelPath.value());
       config.tashkeelState = std::make_unique<tashkeel::State>();
       tashkeel::tashkeel_load(config.tashkeelModelPath.value(),
                               *config.tashkeelState);
-      spdlog::debug("Initialized libtashkeel");
+      // spdlog::debug("Initialized libtashkeel");
     }
 
-    spdlog::info("Initialized piper");
+    // spdlog::info("Initialized piper");
   }
 
   void terminate(PiperConfig &config)
@@ -291,17 +291,17 @@ namespace piper
     if (config.useESpeak)
     {
       // Clean up espeak-ng
-      spdlog::debug("Terminating eSpeak");
+      // spdlog::debug("Terminating eSpeak");
       espeak_Terminate();
-      spdlog::debug("Terminated eSpeak");
+      // spdlog::debug("Terminated eSpeak");
     }
 
-    spdlog::info("Terminated piper");
+    // spdlog::info("Terminated piper");
   }
 
   void loadModel(std::string modelPath, ModelSession &session, bool useCuda)
   {
-    spdlog::debug("Loading onnx model from {}", modelPath);
+    // spdlog::debug("Loading onnx model from {}", modelPath);
     session.env = Ort::Env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING,
                            instanceName.c_str());
     session.env.DisableTelemetryEvents();
@@ -343,8 +343,8 @@ namespace piper
     session.onnx = Ort::Session(session.env, modelPathStr, session.options);
 
     auto endTime = std::chrono::steady_clock::now();
-    spdlog::debug("Loaded onnx model in {} second(s)",
-                  std::chrono::duration<double>(endTime - startTime).count());
+    // spdlog::debug("Loaded onnx model in {} second(s)",
+    // std::chrono::duration<double>(endTime - startTime).count());
   }
 
   // Load Onnx model and JSON config file
@@ -352,7 +352,7 @@ namespace piper
                  std::string modelConfigPath, Voice &voice,
                  std::optional<SpeakerId> &speakerId, bool useCuda)
   {
-    spdlog::debug("Parsing voice config at {}", modelConfigPath);
+    // spdlog::debug("Parsing voice config at {}", modelConfigPath);
     std::ifstream modelConfigFile(modelConfigPath);
     voice.configRoot = json::parse(modelConfigFile);
 
@@ -374,7 +374,7 @@ namespace piper
       }
     }
 
-    spdlog::debug("Voice contains {} speaker(s)", voice.modelConfig.numSpeakers);
+    // spdlog::debug("Voice contains {} speaker(s)", voice.modelConfig.numSpeakers);
 
     loadModel(modelPath, voice.session, useCuda);
 
@@ -385,7 +385,7 @@ namespace piper
                   SynthesisConfig &synthesisConfig, ModelSession &session,
                   std::vector<int16_t> &audioBuffer, SynthesisResult &result)
   {
-    spdlog::debug("Synthesizing audio for {} phoneme id(s)", phonemeIds.size());
+    // spdlog::debug("Synthesizing audio for {} phoneme id(s)", phonemeIds.size());
 
     auto memoryInfo = Ort::MemoryInfo::CreateCpu(
         OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
@@ -455,8 +455,8 @@ namespace piper
     {
       result.realTimeFactor = result.inferSeconds / result.audioSeconds;
     }
-    spdlog::debug("Synthesized {} second(s) of audio in {} second(s)",
-                  result.audioSeconds, result.inferSeconds);
+    // spdlog::debug("Synthesized {} second(s) of audio in {} second(s)",
+    // result.audioSeconds, result.inferSeconds);
 
     // Get max audio value for scaling
     float maxAudioValue = 0.01f;
@@ -519,12 +519,12 @@ namespace piper
         throw std::runtime_error("Tashkeel model is not loaded");
       }
 
-      spdlog::debug("Diacritizing text with libtashkeel: {}", text);
+      // spdlog::debug("Diacritizing text with libtashkeel: {}", text);
       text = tashkeel::tashkeel_run(text, *config.tashkeelState);
     }
 
     // Phonemes for each sentence
-    spdlog::debug("Phonemizing text: {}", text);
+    // spdlog::debug("Phonemizing text: {}", text);
     std::vector<std::vector<Phoneme>> phonemes;
 
     if (voice.phonemizeConfig.phonemeType == eSpeakPhonemes)
@@ -549,6 +549,7 @@ namespace piper
     {
       std::vector<Phoneme> &sentencePhonemes = *phonemesIter;
 
+      /*
       if (spdlog::should_log(spdlog::level::debug))
       {
         // DEBUG log for phonemes
@@ -560,7 +561,7 @@ namespace piper
 
         spdlog::debug("Converting {} phoneme(s) to ids: {}",
                       sentencePhonemes.size(), phonemesStr);
-      }
+      }*/
 
       std::vector<std::shared_ptr<std::vector<Phoneme>>> phrasePhonemes;
       std::vector<SynthesisResult> phraseResults;
@@ -629,6 +630,7 @@ namespace piper
         // phonemes -> ids
         phonemes_to_ids(*(phrasePhonemes[phraseIdx]), idConfig, phonemeIds,
                         missingPhonemes);
+        /*
         if (spdlog::should_log(spdlog::level::debug))
         {
           // DEBUG log for phoneme ids
@@ -641,7 +643,7 @@ namespace piper
           spdlog::debug("Converted {} phoneme(s) to {} phoneme id(s): {}",
                         phrasePhonemes[phraseIdx]->size(), phonemeIds.size(),
                         phonemeIdsStr.str());
-        }
+        }*/
 
         // ids -> audio
         synthesize(phonemeIds, voice.synthesisConfig, voice.session, audioBuffer,
@@ -680,15 +682,15 @@ namespace piper
 
     if (missingPhonemes.size() > 0)
     {
-      spdlog::warn("Missing {} phoneme(s) from phoneme/id map!",
-                   missingPhonemes.size());
+      // spdlog::warn("Missing {} phoneme(s) from phoneme/id map!",
+      //  missingPhonemes.size());
 
       for (auto phonemeCount : missingPhonemes)
       {
         std::string phonemeStr;
         utf8::append(phonemeCount.first, std::back_inserter(phonemeStr));
-        spdlog::warn("Missing \"{}\" (\\u{:04X}): {} time(s)", phonemeStr,
-                     (uint32_t)phonemeCount.first, phonemeCount.second);
+        // spdlog::warn("Missing \"{}\" (\\u{:04X}): {} time(s)", phonemeStr,
+        //  (uint32_t)phonemeCount.first, phonemeCount.second);
       }
     }
 

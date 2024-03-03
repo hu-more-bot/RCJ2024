@@ -32,7 +32,8 @@ set(LIBRARIES
     piper_phonemize
 
     openal
-    # whisper
+
+    whisper
 )
 
 # Project
