@@ -13,8 +13,8 @@ set(SOURCES
     src/tts.cpp
     src/piper.cpp
     src/al.cpp
-    
-    src/sd-server.cpp
+
+    src/sd-client.cpp
 )
 
 # Libraries
@@ -32,7 +32,8 @@ set(LIBRARIES
     piper_phonemize
 
     openal
-    # whisper
+
+    whisper
 )
 
 # Project

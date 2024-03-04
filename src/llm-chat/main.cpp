@@ -2,57 +2,71 @@
 #include <tts.hpp>
 #include <al.hpp>
 
-#include <sd-server.hpp>
-#include <thread>
+#include <sd-client.hpp>
 
-// Load Prompt from File
 char *loadPrompt(const char *path);
-
-static void upd(SDServer *s)
-{
-  char in[128];
-  memset(in, 0, sizeof(in));
-  fgets(in, sizeof(in), stdin);
-  printf("starting: %s\n", in);
-  s->send(in);
-}
+std::vector<std::string> parse(std::string &str);
 
 int main()
 {
   // Get Model: https://drive.google.com/file/d/1AZNDte9PkblvUFBlB5xSxM9dXoHY1pwM
-  // LLM llm("../models/zephyr_q4.gguf", loadPrompt("../prompts/prompt-en.txt"));
+  printf("Loading LLM...  ");
+  LLM llm("../models/zephyr_q4.gguf", loadPrompt("../prompts/en-v2.txt"));
+  printf("Done\n");
 
-  // TTS tts("../models/piper/kusal.onnx");
-  // AL al;
+  printf("Loading TTS...  ");
+  TTS tts("../models/piper/kusal.onnx");
+  AL al;
+  printf("Done\n");
 
-  SDServer sd;
+  printf("Starting SDClient...  ");
+  SDClient sd;
+  printf("Done\n");
 
-  std::thread up(upd, &sd);
-
-  while (true)
-    sd.update();
-
+  printf("Enterint Main Loop...\n");
   while (true)
   {
+    // Wait for user input
+    printf("User In: ");
+    char user_in[128];
+    memset(user_in, 0, sizeof(user_in));
+    fgets(user_in, sizeof(user_in), stdin);
+
+    if (!strncasecmp(user_in, "exit", 4))
+      break;
+
+    // Generate Response
+    std::string response = llm.reply(user_in);
+    auto commands = parse(response);
+    printf("Response: %s", response.c_str());
+
+    // Handle 0-length responses
+    if (response.size() == 0)
+      response = "One minute please...";
+
+    // Generate Response Audio
+    auto buf = tts.say(response);
+    al.add(buf, 44100 / 2);
+
+    // Process Commands
+    printf("commands: %i\n", commands.size());
+    for (auto c : commands)
+      printf("%s\n", c.c_str());
+
+    // Play Response Audio
+    al.play(0);
+    al.remove(0);
   }
-
-  // // while (true)
-  // // {
-  // //   char user_in[128];
-  // //   memset(user_in, 0, sizeof(user_in));
-  // //   fgets(user_in, sizeof(user_in), stdin);
-
-  // //   std::string response = llm.reply(user_in);
-
-  // //   auto buf = tts.say(response);
-  // //   al.add(buf, 44100 / 2);
-  // //   al.play(0);
-  // //   al.remove(0);
-  // // }
 
   return 0;
 }
 
+/**
+ * Load Prompt from file
+ *
+ * @param path path to prompt (text) file
+ * @returns loaded prompt
+ */
 char *loadPrompt(const char *path)
 {
   // Open File
@@ -79,4 +93,46 @@ char *loadPrompt(const char *path)
   }
 
   return prompt;
+}
+
+/**
+ * Separate substrings (separated by "[]") from str
+ *
+ * @param str unformatted string reference, removes substrings
+ * @returns list of substrings
+ */
+std::vector<std::string> parse(std::string &str)
+{
+  std::string clean;
+  std::vector<std::string> out;
+
+  int isEnclosed = 0;
+  std::string parsed;
+  for (auto c : str)
+  {
+    if (c == '[')
+    {
+      isEnclosed++;
+    }
+    else if (c == ']')
+    {
+      isEnclosed--;
+
+      if (isEnclosed == 0)
+      {
+        out.push_back(parsed);
+        parsed.clear();
+      }
+    }
+    else
+    {
+      if (!isEnclosed)
+        clean += c;
+      else
+        parsed += c;
+    }
+  }
+
+  str = clean;
+  return out;
 }
