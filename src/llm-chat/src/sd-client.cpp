@@ -2,100 +2,73 @@
 
 #include <stdexcept>
 
-static int callback(struct lws *wsi, enum lws_callback_reasons reason,
-                    void *user, void *in, size_t len);
+#define PROTOCOL_NAME "sd"
 
-void *SDClient::service(void *arg)
-{
-    SDClient *self = (SDClient *)arg;
+static void *service(void *arg) {
+  while (true)
+    lws_service((struct lws_context *)arg, 0);
 
-    pthread_detach(pthread_self());
-
-    while (!self->quit)
-    {
-        lws_service(self->context, 0);
-    }
-
-    lws_context_destroy(self->context);
-
-    pthread_exit(NULL);
-    return NULL;
+  return NULL;
 }
 
-SDClient::SDClient(int port, const char *address)
-{
-    // Create Context
-    static struct lws_protocols protocols[] = {{"sd-server", callback, sizeof(void *) * 10, 0, 0, (void *)&text, 0}, {}};
+SDClient::SDClient(int port, const char *address) {
+  // Create Context
+  static struct lws_protocols protocols[] = {
+      {PROTOCOL_NAME, callback, sizeof(void *), 0, 0, this}, {}};
 
-    struct lws_context_creation_info info = {};
+  struct lws_context_creation_info info = {};
 
-    info.port = CONTEXT_PORT_NO_LISTEN; /* we do not run any server */
-    info.protocols = protocols;
-    // info.gid = -1;
-    // info.uid = -1;
+  info.port = CONTEXT_PORT_NO_LISTEN; /* we do not run any server */
+  info.protocols = protocols;
 
-    if (!(context = lws_create_context(&info)))
-        throw std::runtime_error("SDClient: failed to init lws");
+  if (!(context = lws_create_context(&info)))
+    throw std::runtime_error("SDClient: failed to init lws");
 
-    // Connect
-    struct lws_client_connect_info i = {};
+  // Connect
+  struct lws_client_connect_info i = {};
 
-    i.protocol = i.local_protocol_name = "sd-server";
-    i.address = i.host = i.origin = address;
-    i.context = context;
-    i.port = port;
+  i.protocol = i.local_protocol_name = PROTOCOL_NAME;
+  i.address = i.host = i.origin = address;
+  i.context = context;
+  i.port = port;
 
-    // i.path = "/";
-    // i.host = lws_canonical_hostname(context);
-    // i.origin = "origin";
+  if (!(wsi = lws_client_connect_via_info(&i)))
+    throw std::runtime_error("SDClient: failed to init wsi");
 
-    if (!(wsi = lws_client_connect_via_info(&i)))
-        throw std::runtime_error("SDClient: failed to connect");
-
-    quit = false;
-    pthread_create(&thread, NULL, service, context);
+  // Launch Service
+  pthread_create(&thread, NULL, service, context);
 }
 
-SDClient::~SDClient()
-{
-    quit = true;
-    pthread_join(thread, NULL);
+SDClient::~SDClient() { lws_context_destroy(context); }
+
+void SDClient::send(std::string msg) {
+  if (wsi) {
+    const size_t len = msg.size();
+    char buf[LWS_PRE + len];
+
+    memcpy(&buf[LWS_PRE], msg.data(), len);
+    lws_write(wsi, (unsigned char *)&buf[LWS_PRE], len, LWS_WRITE_TEXT);
+  } else {
+    printf("SDClient: failed to connect\n");
+  }
 }
 
-void SDClient::send(std::string msg)
-{
-    text = msg;
-    lws_callback_on_writable(wsi);
-}
+int SDClient::callback(struct lws *wsi, enum lws_callback_reasons reason,
+                       void *user, void *in, size_t len) {
+  SDClient *self = (SDClient *)user;
 
-int callback(struct lws *wsi, enum lws_callback_reasons reason,
-             void *user, void *in, size_t len)
-{
-    switch (reason)
-    {
-    case LWS_CALLBACK_CLIENT_ESTABLISHED:
-    {
-        printf("SDClient: connection established\n");
-    }
+  switch (reason) {
+  case LWS_CALLBACK_CLIENT_ESTABLISHED:
+    printf("SDClient: connection established\n");
     break;
 
-    case LWS_CALLBACK_CLIENT_WRITEABLE:
-    {
-        char buf[LWS_PRE + len];
-
-        memcpy(&buf[LWS_PRE], in, len);
-        lws_write(wsi, (unsigned char *)&buf[LWS_PRE], len, LWS_WRITE_TEXT);
-    }
+  case LWS_CALLBACK_CLIENT_CLOSED:
+    printf("SDClient: connection closed\n");
     break;
 
-    case LWS_CALLBACK_CLIENT_CLOSED:
-    {
-        printf("SDClient: connection closed\n");
-    }
+  default:
+    break;
+  }
 
-    default:
-        break;
-    }
-
-    return 0;
+  return 0;
 }

@@ -2,22 +2,20 @@
 
 #include <libwebsockets.h>
 
-#include <pthread.h>
 #include <atomic>
+#include <pthread.h>
 
-class SDServer
-{
+class SDServer {
 public:
-    typedef void (*messageCallback)(char *);
+  typedef void (*messageCallback)(char *);
 
-    SDServer(messageCallback onMessage, int port = 8000);
-    ~SDServer();
+  SDServer(messageCallback onMessage, int port = 8000);
+  ~SDServer();
 
 private:
-    struct lws_context *context;
+  struct lws_context *context;
+  pthread_t thread;
 
-    pthread_t thread;
-    static void *service(void *arg);
-
-    std::atomic<bool> quit = false;
+  static int callback(struct lws *wsi, enum lws_callback_reasons reason,
+                      void *user, void *in, size_t len);
 };

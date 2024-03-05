@@ -2,68 +2,51 @@
 
 #include <stdexcept>
 
-static int callback(struct lws *wsi, enum lws_callback_reasons reason,
-                    void *user, void *in, size_t len);
+#define PROTOCOL_NAME "sd"
 
-void *SDServer::service(void *arg)
-{
-    SDServer *self = (SDServer *)arg;
+static void *service(void *arg) {
+  while (true)
+    lws_service((struct lws_context *)arg, 0);
 
-    pthread_detach(pthread_self());
-
-    while (!self->quit)
-    {
-        lws_service(self->context, 0);
-    }
-
-    lws_context_destroy(self->context);
-
-    pthread_exit(NULL);
-    return NULL;
+  return NULL;
 }
 
-SDServer::SDServer(messageCallback onMessage, int port)
-{
-    struct lws_protocols protocols[] = {{"sd-server", callback, sizeof(void *), 0, 0, (void *)onMessage}, {}};
+SDServer::SDServer(messageCallback onMessage, int port) {
+  struct lws_protocols protocols[] = {
+      {PROTOCOL_NAME, callback, sizeof(void *), 0, 0, this}, {}};
 
-    struct lws_context_creation_info info = {};
+  struct lws_context_creation_info info = {};
 
-    info.port = port;
-    info.protocols = protocols;
+  info.port = port;
+  info.protocols = protocols;
 
-    context = lws_create_context(&info);
+  context = lws_create_context(&info);
 
-    if (!context)
-        throw std::runtime_error("SDServer: failed to init lws");
+  if (!context)
+    throw std::runtime_error("SDServer: failed to init lws");
 
-    quit = false;
-    pthread_create(&thread, NULL, service, this);
+  pthread_create(&thread, NULL, service, context);
 }
 
-SDServer::~SDServer()
-{
-    quit = true;
-    pthread_join(thread, NULL);
-}
+SDServer::~SDServer() { lws_context_destroy(context); }
 
-static int callback(struct lws *wsi, enum lws_callback_reasons reason,
-                    void *user, void *in, size_t len)
-{
-    SDServer::messageCallback onMessage = (SDServer::messageCallback)user;
-    switch (reason)
-    {
-    case LWS_CALLBACK_SERVER_NEW_CLIENT_INSTANTIATED:
-        printf("SDServer: new connection\n");
-        break;
+int SDServer::callback(struct lws *wsi, enum lws_callback_reasons reason,
+                       void *user, void *in, size_t len) {
+  SDServer *self = (SDServer *)user;
 
-    case LWS_CALLBACK_RECEIVE:
-        printf("SDServer: received data: %.*s\n", len, (char *)in);
-        (*onMessage)((char *)in);
-        break;
+  switch (reason) {
+  case LWS_CALLBACK_SERVER_NEW_CLIENT_INSTANTIATED:
+    printf("SDServer: new connection\n");
+    break;
 
-    default:
-        break;
-    }
+  case LWS_CALLBACK_RECEIVE:
+    printf("SDServer: received data: %.*s\n", len, (char *)in);
+    // (*onMessage)((char *)in);
+    break;
 
-    return 0;
+  default:
+    break;
+  }
+
+  return 0;
 }

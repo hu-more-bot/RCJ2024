@@ -1,21 +1,21 @@
+#include <al.hpp>
 #include <llm.hpp>
 #include <tts.hpp>
-#include <al.hpp>
 
 #include <sd-client.hpp>
 
 char *loadPrompt(const char *path);
 std::vector<std::string> parse(std::string &str);
 
-int main()
-{
-  // Get Model: https://drive.google.com/file/d/1AZNDte9PkblvUFBlB5xSxM9dXoHY1pwM
+int main() {
+  // Get Model:
+  // https://drive.google.com/file/d/1AZNDte9PkblvUFBlB5xSxM9dXoHY1pwM
   printf("Loading LLM...  ");
-  LLM llm("../models/zephyr_q4.gguf", loadPrompt("../prompts/en-v2.txt"));
+  LLM llm("../models/zephyr_q4.gguf", loadPrompt("../prompts/en-v1.txt"));
   printf("Done\n");
 
   printf("Loading TTS...  ");
-  TTS tts("../models/piper/kusal.onnx");
+  TTS tts("../models/piper/ryan.onnx");
   AL al;
   printf("Done\n");
 
@@ -24,8 +24,7 @@ int main()
   printf("Done\n");
 
   printf("Enterint Main Loop...\n");
-  while (true)
-  {
+  while (true) {
     // Wait for user input
     printf("User In: ");
     char user_in[128];
@@ -50,8 +49,10 @@ int main()
 
     // Process Commands
     printf("commands: %i\n", commands.size());
-    for (auto c : commands)
-      printf("%s\n", c.c_str());
+    for (auto c : commands) {
+      // printf("%s\n", c.c_str());
+      sd.send(c);
+    }
 
     // Play Response Audio
     al.play(0);
@@ -67,12 +68,10 @@ int main()
  * @param path path to prompt (text) file
  * @returns loaded prompt
  */
-char *loadPrompt(const char *path)
-{
+char *loadPrompt(const char *path) {
   // Open File
   FILE *f = NULL;
-  if (!(f = fopen(path, "r")))
-  {
+  if (!(f = fopen(path, "r"))) {
     printf("Failed to open file: %s\n", path);
     return NULL;
   }
@@ -85,8 +84,7 @@ char *loadPrompt(const char *path)
   // Read File
   char *prompt = (char *)malloc(sizeof(char) * size);
 
-  if (!fread(prompt, size, 1, f))
-  {
+  if (!fread(prompt, size, 1, f)) {
     printf("Failed to read file: %s\n", path);
     free(prompt);
     return NULL;
@@ -101,31 +99,23 @@ char *loadPrompt(const char *path)
  * @param str unformatted string reference, removes substrings
  * @returns list of substrings
  */
-std::vector<std::string> parse(std::string &str)
-{
+std::vector<std::string> parse(std::string &str) {
   std::string clean;
   std::vector<std::string> out;
 
   int isEnclosed = 0;
   std::string parsed;
-  for (auto c : str)
-  {
-    if (c == '[')
-    {
+  for (auto c : str) {
+    if (c == '[') {
       isEnclosed++;
-    }
-    else if (c == ']')
-    {
+    } else if (c == ']') {
       isEnclosed--;
 
-      if (isEnclosed == 0)
-      {
+      if (isEnclosed == 0) {
         out.push_back(parsed);
         parsed.clear();
       }
-    }
-    else
-    {
+    } else {
       if (!isEnclosed)
         clean += c;
       else

@@ -3,23 +3,22 @@
 #include "whisper/whisper.h"
 
 #include <string>
+#include <vector>
 
 // Wrapper Class for the whisper.cpp library
-class STT
-{
+class STT {
 public:
-    STT(const char *model);
-    ~STT();
+  STT(const char *model);
+  ~STT();
 
-    std::string listenBuf(std::vector<float> pcmf32);
-    std::string listenWav(const char *path);
+  void setLang(std::string lang = "auto", bool transl = false);
 
-    struct language
-    {
-        std::string in = "auto";
-        std::string out = "auto";
-    };
+  std::string listenBuf(std::vector<float> pcmf32);
+  std::string listenWav(const char *path);
 
 private:
-    struct whisper_context *ctx{};
+  std::string language = "auto";
+  bool translate = false;
+
+  struct whisper_context *ctx{};
 };

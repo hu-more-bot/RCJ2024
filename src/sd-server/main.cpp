@@ -2,18 +2,14 @@
 #include <sd-server.hpp>
 #include <sd.hpp>
 
-#include <thread>
 #include <string.h>
+#include <thread>
 
-static void onMessage(char *message)
-{
-  printf("todo\n");
-}
+static void onMessage(char *message) { printf("todo\n"); }
 
-int main()
-{
+int main() {
   printf("Starting Server...  ");
-  SDServer sdServer(onMessage, 8000);
+  SDServer sdServer(onMessage);
   printf("Done\n");
 
   printf("Initializing Renderer...  ");
@@ -28,8 +24,7 @@ int main()
 
   // std::thread render(SD::txt2img, "../models/...", "prompt");
 
-  while (renderer.update())
-  {
+  while (renderer.update()) {
     if (renderer.key("esc"))
       renderer.exit();
 

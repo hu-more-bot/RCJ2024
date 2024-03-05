@@ -2,27 +2,24 @@
 
 #include <libwebsockets.h>
 
-#include <pthread.h>
 #include <atomic>
+#include <pthread.h>
 
 #include <string>
 
-class SDClient
-{
+class SDClient {
 public:
-    SDClient(int port = 8000, const char *address = "localhost");
-    ~SDClient();
+  SDClient(int port = 8000, const char *address = "localhost");
+  ~SDClient();
 
-    void send(std::string msg);
+  void send(std::string msg);
 
 private:
-    std::string text;
+  struct lws_context *context{};
+  struct lws *wsi{};
 
-    struct lws_context *context;
-    struct lws *wsi;
+  pthread_t thread;
 
-    pthread_t thread;
-    static void *service(void *arg);
-
-    std::atomic<bool> quit = false;
+  static int callback(struct lws *wsi, enum lws_callback_reasons reason,
+                      void *user, void *in, size_t len);
 };
