@@ -4,8 +4,7 @@
 
 extern std::unordered_map<std::string, int> GLFW_STRING_SCANCODE;
 
-Window::Window(const std::string &name)
-{
+Window::Window(const std::string &name) {
   // Init GLFW
   glfwInit();
 
@@ -16,8 +15,7 @@ Window::Window(const std::string &name)
   window = glfwCreateWindow(videoMode->width, videoMode->height, name.c_str(),
                             monitor, nullptr);
 
-  if (window == nullptr)
-  {
+  if (window == nullptr) {
     printf("Failed to create window!\n");
     glfwTerminate();
     return;
@@ -33,8 +31,7 @@ Window::Window(const std::string &name)
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 
-  if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)))
-  {
+  if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
     printf("Failed to init OpenGL: %u", glGetError());
     glfwDestroyWindow(window);
     glfwTerminate();
@@ -47,40 +44,35 @@ Window::Window(const std::string &name)
   glfwSetFramebufferSizeCallback(window, callback_resize);
   glfwSetKeyCallback(window, callback_key);
 
-  glfwSwapInterval(2);
+  glfwSwapInterval(1); // 1x vsync (display's refresh rate)
 
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 }
 
-Window::~Window()
-{
+Window::~Window() {
   if (window)
     glfwDestroyWindow(window);
   glfwTerminate();
 }
 
-bool Window::update()
-{
+bool Window::update() {
   glfwSwapBuffers(window);
   glfwPollEvents();
 
   return !glfwWindowShouldClose(window);
 }
 
-void Window::exit(const bool sure) const
-{
+void Window::exit(const bool sure) const {
   glfwSetWindowShouldClose(window, sure);
 }
 
-bool Window::key(const std::string &k) const
-{
+bool Window::key(const std::string &k) const {
   return keyboard.count(glfwGetKeyScancode(GLFW_STRING_SCANCODE[k])) > 0;
 }
 
 // Callbacks
 
-void Window::callback_resize(GLFWwindow *window, int w, int h)
-{
+void Window::callback_resize(GLFWwindow *window, int w, int h) {
   auto *self = (Window *)glfwGetWindowUserPointer(window);
   self->width = w;
   self->height = h;
@@ -88,8 +80,7 @@ void Window::callback_resize(GLFWwindow *window, int w, int h)
 }
 
 void Window::callback_key(GLFWwindow *window, int key, int scancode, int action,
-                          int mods)
-{
+                          int mods) {
   auto *self = (Window *)glfwGetWindowUserPointer(window);
 
   if (action == GLFW_PRESS)

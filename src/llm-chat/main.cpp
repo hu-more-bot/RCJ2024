@@ -1,37 +1,44 @@
 #include <al.hpp>
 #include <llm.hpp>
+#include <stt.hpp>
 #include <tts.hpp>
 
 #include <sd-client.hpp>
+
+#define LLM_MODEL "../models/zephyr_q4.gguf"
+#define TTS_MODEL "../models/piper/ryan.onnx"
+#define STT_MODEL "../models/ggml-tiny.bin"
+#define PROMPT "../prompts/en-v3.txt"
 
 char *loadPrompt(const char *path);
 std::vector<std::string> parse(std::string &str);
 
 int main() {
-  // Get Model:
-  // https://drive.google.com/file/d/1AZNDte9PkblvUFBlB5xSxM9dXoHY1pwM
-  printf("Loading LLM...  ");
-  LLM llm("../models/zephyr_q4.gguf", loadPrompt("../prompts/en-v1.txt"));
-  printf("Done\n");
+  printf("Loading LLM...\n");
+  LLM llm(LLM_MODEL, loadPrompt(PROMPT));
 
-  printf("Loading TTS...  ");
-  TTS tts("../models/piper/ryan.onnx");
+  printf("Loading TTS...\n");
+  TTS tts(TTS_MODEL);
   AL al;
-  printf("Done\n");
 
-  printf("Starting SDClient...  ");
+  printf("Loading STT...\n");
+  STT stt(STT_MODEL);
+
+  printf("Starting SDClient...\n");
   SDClient sd;
-  printf("Done\n");
 
   printf("Enterint Main Loop...\n");
   while (true) {
     // Wait for user input
-    printf("User In: ");
-    char user_in[128];
-    memset(user_in, 0, sizeof(user_in));
-    fgets(user_in, sizeof(user_in), stdin);
+    printf("User In: \n");
+    // char user_in[128];
+    // memset(user_in, 0, sizeof(user_in));
+    // fgets(user_in, sizeof(user_in), stdin);
 
-    if (!strncasecmp(user_in, "exit", 4))
+    std::string user_in = stt.listen();
+    printf("Said: '%s'\n", user_in.c_str());
+
+    if (!strncasecmp(user_in.c_str(), "exit", 4))
       break;
 
     // Generate Response

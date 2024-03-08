@@ -60,7 +60,7 @@ Renderer::Renderer(const std::string &name) : Window(name) {
   }
 
   // Load Rect
-  float vertices[] = {
+  std::vector<float> vertices = {
       // positions      // texture coords
       -1.0f, 1.0f,  0.0f, 1.0f, // top right
       -1.0f, -1.0f, 0.0f, 0.0f, // bottom right
@@ -68,39 +68,18 @@ Renderer::Renderer(const std::string &name) : Window(name) {
       1.0f,  1.0f,  1.0f, 1.0f  // top left
   };
 
-  uint32_t indices[] = {
+  std::vector<uint32_t> indices = {
       0, 1, 3, // first triangle
       1, 2, 3  // second triangle
   };
 
-  glGenVertexArrays(3, V);
-
-  glBindVertexArray(V[0]);
-
-  glBindBuffer(GL_ARRAY_BUFFER, V[1]);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, V[2]);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
-               GL_STATIC_DRAW);
-
-  // position attribute
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
-  glEnableVertexAttribArray(0);
-  // texture coord attribute
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
-                        (void *)(2 * sizeof(float)));
-  glEnableVertexAttribArray(1);
-
-  // Config OpenGL
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glEnable(GL_CULL_FACE);
+  mesh(vertices, indices);
 }
 
 Renderer::~Renderer() {
   // Delete Buffers
-  glDeleteBuffers(3, V);
+  for (auto vert : v)
+    glDeleteBuffers(3, (GLuint *)&vert);
 
   // Delete Textures
   glDeleteTextures(textures.size(), textures.data());
@@ -110,6 +89,40 @@ void Renderer::clear(GLuint R, GLuint G, GLuint B) {
   // Clear Screen
   glClearColor(R, G, B, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
+}
+
+size_t Renderer::mesh(std::vector<float> vertices,
+                      std::vector<uint32_t> indices) {
+  GLuint V[3];
+
+  glGenVertexArrays(3, V);
+
+  glBindVertexArray(V[0]);
+
+  glBindBuffer(GL_ARRAY_BUFFER, V[1]);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices[0]), vertices.data(),
+               GL_STATIC_DRAW);
+
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, V[2]);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices[0]), indices.data(),
+               GL_STATIC_DRAW);
+
+  // position attribute
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
+  glEnableVertexAttribArray(0);
+
+  // texture coord attribute
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
+                        (void *)(2 * sizeof(float)));
+  glEnableVertexAttribArray(1);
+
+  // Config OpenGL
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glEnable(GL_CULL_FACE);
+
+  v.push_back({V[0], V[1], V[2], indices.size()});
+  return v.size() - 1;
 }
 
 size_t Renderer::add(unsigned char *data, int width, int height, int channels) {
@@ -155,14 +168,15 @@ size_t Renderer::add(unsigned char *data, int width, int height, int channels) {
   return textures.size() - 1;
 }
 
-void Renderer::draw() {
+void Renderer::draw(size_t id) {
   // TODO optimize using draw.mesh
   glUseProgram(shader);
 
   // glUniform
 
-  glBindVertexArray(V[0]);
-  glDrawElements(GL_TRIANGLE_FAN, 6, GL_UNSIGNED_INT, nullptr);
+  glBindVertexArray(v[id].VAO);
+  glDrawElements(GL_TRIANGLES, v[id].size, GL_UNSIGNED_INT, nullptr);
+  printf("%i\n", glGetError());
 }
 
 const char *_shader[] = {"#version 300 es\n"
@@ -191,71 +205,3 @@ const char *_shader[] = {"#version 300 es\n"
                          "void main() {\n"
                          "FragColor = vec4(1.0, 0.4, 0.0, 1.0);\n"
                          "}"};
-
-// // Vertex
-// "#version 300 es"
-
-// "layout(location = 0) in vec2 aPos;"
-// "layout(location = 1) in vec2 aTexCoord;"
-
-// "out struct {"
-// "vec2 TexCoord;"
-// "vec2 localPos;"
-// "vec2 globalPos;"
-// "vec2 center;"
-// "vec2 size;"
-// "} io;"
-
-// "uniform struct {"
-// "vec2 center;"
-// "vec2 size;"
-// "float rotation;"
-// "vec2 ratio;"
-// "} v;"
-
-// "void main(){"
-// "vec2 point = v.size * aPos;"
-
-// "io.localPos = aPos;"
-// "io.globalPos = point + v.center;"
-
-// "vec2 pos = v.center;"
-// "pos.x += sin(v.rotation) * (point.x) - cos(v.rotation) * (point.y);"
-// "pos.y += cos(v.rotation) * (point.x) + sin(v.rotation) * (point.y);"
-// "pos *= v.ratio;"
-
-// "io.center = v.center;"
-// "io.size = v.size;"
-
-// "io.TexCoord = aTexCoord;"
-
-// "gl_Position = vec4(pos.xy, 0.0, 1.0);"
-// "}",
-
-// // Fragment
-// "#version 300 es"
-// "precision mediump float;"
-// "out vec4 FragColor;"
-
-// "in struct {"
-// "vec2 TexCoord;"
-// "vec2 localPos;"
-// "vec2 globalPos;"
-// "vec2 center;"
-// "vec2 size;"
-// "} io;"
-
-// "uniform struct {"
-// "int look;"
-
-// "sampler2D tex;"
-// "vec3 color;"
-
-// "float corner;"
-
-// "float time;"
-// "} f;"
-
-// "void main() {"
-// "FragColor = vec4(1.0, 0.0, 0.0, 0.0);"
-// "}"};

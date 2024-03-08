@@ -11,6 +11,7 @@ set(SOURCES
     src/llm.cpp
 
     src/tts.cpp
+    src/stt.cpp
     src/piper.cpp
     src/al.cpp
 
@@ -34,6 +35,9 @@ set(LIBRARIES
     openal
 
     whisper
+    wcommon
+    common-sdl
+    SDL2
 )
 
 # Project

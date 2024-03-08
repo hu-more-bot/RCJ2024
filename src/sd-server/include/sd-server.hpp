@@ -2,20 +2,20 @@
 
 #include <libwebsockets.h>
 
-#include <atomic>
 #include <pthread.h>
 
 class SDServer {
 public:
-  typedef void (*messageCallback)(char *);
+  typedef void (*messageCallback)(char *, int, void *);
 
-  SDServer(messageCallback onMessage, int port = 8000);
+  SDServer(messageCallback callback, void *user = NULL, int port = 8000);
   ~SDServer();
 
-private:
-  struct lws_context *context;
-  pthread_t thread;
+  int sockfd;
 
-  static int callback(struct lws *wsi, enum lws_callback_reasons reason,
-                      void *user, void *in, size_t len);
+  void *user;
+  messageCallback callback;
+
+private:
+  pthread_t accept;
 };

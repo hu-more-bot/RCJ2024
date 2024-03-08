@@ -1,6 +1,7 @@
 #include <sd.hpp>
 
 #include <stdexcept>
+#include <unistd.h>
 
 SD::SD(const char *model) {
   int n_threads = -1;

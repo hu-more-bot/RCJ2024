@@ -4,6 +4,9 @@
 
 #include <stdexcept>
 
+#define PAINTER "<|ai festő|>" //  "<|ai painter|>"
+#define CLIENT "<|vásárló|>"   //"<|client|>"
+
 void cb_log_disable(enum ggml_log_level, const char *, void *) {}
 
 LLM::LLM(const char *model, const char *prompt) {
@@ -17,7 +20,7 @@ LLM::LLM(const char *model, const char *prompt) {
   // initialize the model
   llama_model_params model_params = llama_model_default_params();
 
-  // model_params.n_gpu_layers = 99;
+  model_params.n_gpu_layers = 99;
 
   if (!(llm.model = llama_load_model_from_file(model, model_params)))
     throw std::runtime_error(std::string(__func__) + ": failed to load model");
@@ -69,7 +72,7 @@ std::string LLM::reply(std::string prompt) {
     std::vector<llama_token> tokens;
     std::vector<llama_token> tmp;
 
-    tmp = tokenize("<|user|>");
+    tmp = tokenize(CLIENT);
     tmp.push_back(llama_token_nl(llm.model));
     tokens.insert(tokens.end(), tmp.begin(), tmp.end());
 
@@ -78,7 +81,7 @@ std::string LLM::reply(std::string prompt) {
     tmp.push_back(llama_token_nl(llm.model));
     tokens.insert(tokens.end(), tmp.begin(), tmp.end());
 
-    tmp = tokenize("<|ai painter|>");
+    tmp = tokenize(PAINTER);
     tmp.push_back(llama_token_nl(llm.model));
     tokens.insert(tokens.end(), tmp.begin(), tmp.end());
 
@@ -87,6 +90,7 @@ std::string LLM::reply(std::string prompt) {
 
   std::string out;
 
+  int n_len = llm.n_cur + 64;
   while (true) {
     // sample the next token
     {
@@ -108,8 +112,7 @@ std::string LLM::reply(std::string prompt) {
           llama_sample_token_greedy(llm.ctx, &candidates_p);
 
       // is it an end of stream?
-      if (new_token_id == llama_token_eos(llm.model)) // || n_cur == n_len)
-      {
+      if (new_token_id == llama_token_eos(llm.model) || llm.n_cur == n_len) {
         out += "\n";
         // printf("\n");
         break;

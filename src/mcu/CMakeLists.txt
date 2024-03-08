@@ -23,4 +23,5 @@ add_compile_options(-Wall
 
 # Sources
 add_subdirectory(main)
+add_subdirectory(dyn_test)
 add_subdirectory(lib)

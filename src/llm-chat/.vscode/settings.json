@@ -1,4 +1,22 @@
 {
+    "cmake.options.statusBarVisibility": "visible",
+    "cmake.options.advanced": {
+        "cpack": {
+            "statusBarVisibility": "hidden"
+        },
+        "workflow": {
+            "statusBarVisibility": "hidden"
+        },
+        "buildTarget": {
+            "statusBarVisibility": "hidden"
+        },
+        "launchTarget": {
+            "statusBarVisibility": "hidden"
+        },
+        "variant": {
+            "statusBarVisibility": "compact"
+        }
+    },
     "files.associations": {
         "any": "cpp",
         "array": "cpp",

@@ -2,51 +2,145 @@
 
 #include <stdexcept>
 
-#define PROTOCOL_NAME "sd"
+#define TIMEOUT 2 * 60 // 2 minutes
+#define PORT 4001
+
+struct Sock {
+  int id;
+  int latest; // latest update from client
+
+  pthread_t service, timeouter; // threads
+
+  SDServer *head;
+};
 
 static void *service(void *arg) {
-  while (true)
-    lws_service((struct lws_context *)arg, 0);
+  Sock *sock = (Sock *)arg;
+
+  int len;
+  char buffer[256];
+
+  // printf("started service\n");
+
+  while (sock->id >= 0) {
+    bzero(buffer, 256);
+    if ((len = read(sock->id, buffer, sizeof(buffer))) < 0)
+      continue;
+
+    sock->latest = time(0);
+
+    len--;
+    buffer[len] = 0;
+
+    // handle exit
+    if (!strncasecmp(buffer, "exit", 4)) {
+      int id = sock->id;
+      sock->id = -1;
+      close(id);
+      // free(sock);
+
+      break;
+    }
+
+    sock->head->callback(buffer, len, sock->head->user);
+
+    sleep(1);
+  }
+
+  // printf("connection closed\n");
 
   return NULL;
 }
 
-SDServer::SDServer(messageCallback onMessage, int port) {
-  struct lws_protocols protocols[] = {
-      {PROTOCOL_NAME, callback, sizeof(void *), 0, 0, this}, {}};
+static void *timeouter(void *arg) {
+  Sock *sock = (Sock *)arg;
 
-  struct lws_context_creation_info info = {};
+  do {
+    sleep(1);
 
-  info.port = port;
-  info.protocols = protocols;
+    if (sock->latest + TIMEOUT < time(0)) {
+      fprintf(stderr, "timeouted connection\n");
+      int id = sock->id;
+      sock->id = -1;
+      close(id);
+      // free(sock);
+    }
+  } while (sock->id >= 0);
 
-  context = lws_create_context(&info);
-
-  if (!context)
-    throw std::runtime_error("SDServer: failed to init lws");
-
-  pthread_create(&thread, NULL, service, context);
+  return NULL;
 }
 
-SDServer::~SDServer() { lws_context_destroy(context); }
+static void *accepter(void *arg) {
+  // int *sockfd = (int *)arg;
+  auto sd = (SDServer *)arg;
 
-int SDServer::callback(struct lws *wsi, enum lws_callback_reasons reason,
-                       void *user, void *in, size_t len) {
-  SDServer *self = (SDServer *)user;
+  // Open Socket
+  if ((sd->sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    throw std::runtime_error("failed to open socket");
 
-  switch (reason) {
-  case LWS_CALLBACK_SERVER_NEW_CLIENT_INSTANTIATED:
-    printf("SDServer: new connection\n");
-    break;
+  // Start Server
+  struct sockaddr_in serv_addr {};
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_addr.s_addr = INADDR_ANY;
+  serv_addr.sin_port = htons(PORT);
+  if (bind(sd->sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    throw std::runtime_error("failed to bind port");
 
-  case LWS_CALLBACK_RECEIVE:
-    printf("SDServer: received data: %.*s\n", len, (char *)in);
-    // (*onMessage)((char *)in);
-    break;
+  listen(sd->sockfd, 5);
 
-  default:
-    break;
+  while (true) {
+    // Accept Connection
+    struct sockaddr_in client;
+    socklen_t len = sizeof(client);
+    int new_socket = accept(sd->sockfd, (struct sockaddr *)&client, &len);
+
+    if (new_socket < 0) {
+      fprintf(stderr, "Failed to accept connection\n");
+      continue;
+    }
+
+    printf("new connection\n");
+
+    // if (sock->id == -1) {
+    // Launch threads
+    Sock *sock = (Sock *)malloc(sizeof(Sock)); // TODO fix memory leak
+    sock->id = new_socket;
+    sock->latest = time(0);
+    sock->head = sd;
+    pthread_create(&sock->service, NULL, service, sock);
+    pthread_create(&sock->timeouter, NULL, timeouter, sock);
+
+    // }
   }
 
-  return 0;
+  return NULL;
+}
+
+SDServer::SDServer(messageCallback callback, void *user, int port)
+    : callback(callback), user(user) {
+  // socklen_t clilen = sizeof(cli_addr);
+  // int newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &clilen);
+  // if (newsockfd < 0)
+  //   fprintf(stderr, "ERROR on accepting connection\n");
+
+  // char buffer[256];
+  // bzero(buffer, 256);
+  // int n = read(newsockfd, buffer, 255);
+  // if (n < 0)
+  //   error("ERROR reading from socket");
+  // printf("Here is the message: %s\n", buffer);
+  // n = write(newsockfd, "I got your message", 18);
+  // if (n < 0)
+  //   error("ERROR writing to socket");
+  // close(newsockfd);
+  // close(sockfd);
+  // return 0;
+
+  // Launch threads
+  pthread_create(&accept, NULL, accepter, this);
+}
+
+SDServer::~SDServer() {
+  pthread_cancel(accept);
+  close(sockfd);
 }

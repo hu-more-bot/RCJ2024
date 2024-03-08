@@ -1,39 +1,95 @@
+#include "pico/platform.h"
 #include "pico/stdlib.h"
-
 #include "pico/time.h"
-#include "servo.h"
+#include "pico/types.h"
 
-// TODO: Listen on serial & drive motors
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-struct Servo {
-  int pin;
+#include "servo-stuff.h"
 
-  int angle;
-  int smooth;
-  int prev;
+#define EM_RELAY 28
 
-  int maxAngle;    // degrees
-  float smoothing; // percentage
-} servo[8];
+// int degs = 1600;
+// while (true) {
+//   servo_setMillis(0, degs); // ANGLE2MILLIS(270, degs));
+
+//   printf("Degrees:\n");
+//   scanf("%i", &degs);
+//   fflush(stdin);
+// }
 
 struct Stepper {
   int EN, PUL, DIR;
 } stepper[2];
 
-int main() {
-  /* Set Up Servos */ {
-    int median[8] = {}; // resting points of servos
-    const int start_pin = 0;
-    for (int i = 0; i < 8; i++) {
-      servo[i].pin = start_pin + i;
-      servo[i].angle = servo[i].smooth = servo[i].prev = median[i];
-      servo_init(servo[i].pin);
+// B-: green
+// B+: yellow
 
-      // Set Constants
-      servo[i].maxAngle = 270;   // 270 degrees
-      servo[i].smoothing = 0.05; // 5%
-    }
+// A-: red
+// A+: blue
+
+// TODO measure coil inductance
+
+/*
+
+int PUL=7; //define Pulse pin
+int DIR=6; //define Direction pin
+int ENA=5; //define Enable Pin
+void setup() {
+  pinMode (PUL, OUTPUT);
+  pinMode (DIR, OUTPUT);
+  pinMode (ENA, OUTPUT);
+
+}
+
+void loop() {
+  for (int i=0; i<6400; i++)    //Forward 5000 steps
+  {
+    digitalWrite(DIR,LOW);
+    digitalWrite(ENA,HIGH);
+    digitalWrite(PUL,HIGH);
+    delayMicroseconds(50);
+    digitalWrite(PUL,LOW);
+    delayMicroseconds(50);
   }
+  for (int i=0; i<6400; i++)   //Backward 5000 steps
+  {
+    digitalWrite(DIR,HIGH);
+    digitalWrite(ENA,HIGH);
+    digitalWrite(PUL,HIGH);
+    delayMicroseconds(50);
+    digitalWrite(PUL,LOW);
+    delayMicroseconds(50);
+  }
+}
+*/
+
+/*
+
+When “EN” is Low, the motor is in a free states(Off - line mode).In this mode,
+    you can adjust the motor shaft position manually;
+when “EN” is High(Vacant),
+    the motor will be in an automatic control mode
+        ."Direction" is the motor direction signal pin,
+    "PULSE" is the motor pulse signal pin.Once the driver get a pulse,
+    the motor move a step.
+
+            */
+
+int main() {
+  stdio_init_all();
+
+  // Servo Cut-Off Relay
+  gpio_init(EM_RELAY);
+  gpio_set_dir(EM_RELAY, GPIO_OUT);
+  gpio_put(EM_RELAY, true);
+
+  pose pose_rest = {0.3, 0.0, 0.2, 1.0,  // left hand
+                    0.3, 0.0, 0.2, 1.0}; // right hand
+
+  setupServos(servo, pose_rest);
 
   /* Set Up Steppers */ {
     const int start_pin = 8;
@@ -50,20 +106,84 @@ int main() {
     }
   }
 
-  float last = to_ms_since_boot(get_absolute_time()) / 1000.0, now = last;
+  struct Animation anim = (struct Animation){2, (uint32_t[2]){2000, 2000},
+                                             (pose *){pose_rest, pose_rest}, 0};
+
+  anim.pose[0][1] = 0.0;
+  anim.pose[0][5] = 0.5;
+
+  anim.pose[0][2] = 0.2;
+  anim.pose[0][7] = 0.5;
+
+  anim.pose[0][3] = 1.0;
+  anim.pose[0][7] = 1.0;
+
+  anim.pose[1][1] = 0.5;
+  anim.pose[1][5] = 0.0;
+
+  anim.pose[1][2] = 0.5;
+  anim.pose[1][7] = 0.2;
+
+  anim.pose[1][3] = 0.5;
+  anim.pose[1][7] = 0.5;
+
+  float last, now = to_ms_since_boot(get_absolute_time()) / 1000.0f;
   while (true) {
+    // Timing
     last = now;
-    now = to_ms_since_boot(get_absolute_time()) / 1000.0;
-    float deltaTime = now - last;
+    now = to_ms_since_boot(get_absolute_time()) / 1000.0f;
+    float deltaTime = now - last; // in seconds
 
     // Update Servos (Smooth)
     for (int i = 0; i < 8; i++) {
-      servo[i].smooth =
-          (servo[i].angle * servo[i].smoothing) +
-          (servo[i].prev * (100.0 - servo[i].smoothing)) * deltaTime;
-      servo[i].prev = servo[i].smooth;
-      servo_setMillis(servo[i].pin,
-                      ANGLE2MILLIS(servo[i].maxAngle, servo[i].smooth));
+      struct Servo *s = &servo[i];
+
+      // pwm = low + % * (high-low)
+      float value = s->min + LIMIT(s->value, 0.0f, 1.0f) * (s->max - s->min);
+
+      // Set invalid prev
+      if (s->prev == 0)
+        s->prev = value;
+
+      // Smooth out movement
+      if (s->smoothing > 0) {
+        // pwm = (pwm * s_amount) + (prev * (100% - s_amount))
+        value = (value * s->smoothing) + (s->prev * (1.0 - s->smoothing));
+        s->prev = value;
+      }
+
+      // Double-Check Values
+      if (MAX(s->min, s->max) < value || value < MIN(s->min, s->max))
+        continue; // invalid value, something went wrong
+      // if (i == 3)
+      // printf("%.2f %.2f\n", s->value, value);
+
+      servo_setMillis(s->pin, value);
     }
+
+    // if ((int)now % 2 == 0) {
+    //   servo[1].value = 0.0;
+    //   servo[5].value = 0.5;
+
+    //   servo[2].value = 0.2;
+    //   servo[7].value = 0.5;
+
+    //   servo[3].value = 1.0;
+    //   servo[7].value = 1.0;
+    //   if ((int)now % 3 == 0) {
+    //     servo[1].value = 0.5;
+    //     servo[5].value = 0.0;
+
+    //     servo[2].value = 0.5;
+    //     servo[7].value = 0.2;
+
+    //     servo[3].value = 0.5;
+    //     servo[7].value = 0.5;
+    //   }
+    // }
+
+    animate(servo, anim);
   }
+
+  gpio_put(EM_RELAY, false);
 }

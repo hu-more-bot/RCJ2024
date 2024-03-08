@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common-sdl.h"
 #include "whisper/whisper.h"
 
 #include <string>
@@ -13,12 +14,13 @@ public:
 
   void setLang(std::string lang = "auto", bool transl = false);
 
-  std::string listenBuf(std::vector<float> pcmf32);
-  std::string listenWav(const char *path);
+  std::string listen();
 
 private:
   std::string language = "auto";
   bool translate = false;
+
+  audio_async audio;
 
   struct whisper_context *ctx{};
 };

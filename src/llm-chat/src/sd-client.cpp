@@ -1,74 +1,43 @@
 #include <sd-client.hpp>
 
-#include <stdexcept>
-
-#define PROTOCOL_NAME "sd"
-
-static void *service(void *arg) {
-  while (true)
-    lws_service((struct lws_context *)arg, 0);
-
-  return NULL;
-}
+#include <netdb.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 SDClient::SDClient(int port, const char *address) {
-  // Create Context
-  static struct lws_protocols protocols[] = {
-      {PROTOCOL_NAME, callback, sizeof(void *), 0, 0, this}, {}};
+  struct sockaddr_in serv_addr;
+  struct hostent *server;
 
-  struct lws_context_creation_info info = {};
+  if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    fprintf(stderr, "%s: failed to open socket\n", __func__);
+    return;
+  }
 
-  info.port = CONTEXT_PORT_NO_LISTEN; /* we do not run any server */
-  info.protocols = protocols;
+  if ((server = gethostbyname(address)) == NULL) {
+    fprintf(stderr, "%s: no such host\n", __func__);
+    return;
+  }
 
-  if (!(context = lws_create_context(&info)))
-    throw std::runtime_error("SDClient: failed to init lws");
-
-  // Connect
-  struct lws_client_connect_info i = {};
-
-  i.protocol = i.local_protocol_name = PROTOCOL_NAME;
-  i.address = i.host = i.origin = address;
-  i.context = context;
-  i.port = port;
-
-  if (!(wsi = lws_client_connect_via_info(&i)))
-    throw std::runtime_error("SDClient: failed to init wsi");
-
-  // Launch Service
-  pthread_create(&thread, NULL, service, context);
+  bzero((char *)&serv_addr, sizeof(serv_addr));
+  serv_addr.sin_family = AF_INET;
+  bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr,
+        server->h_length);
+  serv_addr.sin_port = htons(port);
+  if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+    fprintf(stderr, "%s: failed to connect\n", __func__);
+    return; // TODO autoconnect
+  }
 }
 
-SDClient::~SDClient() { lws_context_destroy(context); }
+SDClient::~SDClient() { close(sockfd); }
 
 void SDClient::send(std::string msg) {
-  if (wsi) {
-    const size_t len = msg.size();
-    char buf[LWS_PRE + len];
-
-    memcpy(&buf[LWS_PRE], msg.data(), len);
-    lws_write(wsi, (unsigned char *)&buf[LWS_PRE], len, LWS_WRITE_TEXT);
-  } else {
-    printf("SDClient: failed to connect\n");
-  }
-}
-
-int SDClient::callback(struct lws *wsi, enum lws_callback_reasons reason,
-                       void *user, void *in, size_t len) {
-  SDClient *self = (SDClient *)user;
-
-  switch (reason) {
-  case LWS_CALLBACK_CLIENT_ESTABLISHED:
-    printf("SDClient: connection established\n");
-    break;
-
-  case LWS_CALLBACK_CLIENT_CLOSED:
-    printf("SDClient: connection closed\n");
-    break;
-
-  default:
-    break;
-  }
-
-  return 0;
+  int n = write(sockfd, msg.data(), msg.size());
+  if (n != msg.size())
+    fprintf(stderr, "%s: failed to send message\n", __func__);
 }

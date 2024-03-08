@@ -1,5 +1,25 @@
 {
+    "cmake.options.statusBarVisibility": "visible",
+    "cmake.options.advanced": {
+        "cpack": {
+            "statusBarVisibility": "hidden"
+        },
+        "workflow": {
+            "statusBarVisibility": "hidden"
+        },
+        "buildTarget": {
+            "statusBarVisibility": "hidden"
+        },
+        "launchTarget": {
+            "statusBarVisibility": "hidden"
+        },
+        "variant": {
+            "statusBarVisibility": "compact"
+        }
+    },
     "files.associations": {
-        "*.tcc": "cpp"
+        "*.tcc": "cpp",
+        "*.vs": "glsl",
+        "*.fs": "glsl"
     }
 }
