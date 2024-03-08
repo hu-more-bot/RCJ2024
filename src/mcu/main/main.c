@@ -1,3 +1,4 @@
+#include "hardware/gpio.h"
 #include "pico/platform.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"
@@ -106,26 +107,49 @@ int main() {
     }
   }
 
-  struct Animation anim = (struct Animation){2, (uint32_t[2]){2000, 2000},
-                                             (pose *){pose_rest, pose_rest}, 0};
+  while (true) {
+    gpio_put(stepper[0].DIR, false);
+    gpio_put(stepper[0].EN, true);
+    for (int i = 0; i < 6400; i++) // Forward 5000 steps
+    {
+      gpio_put(stepper[0].PUL, true);
+      sleep_us(50);
+      gpio_put(stepper[0].PUL, false);
+      sleep_us(50);
+    }
 
-  anim.pose[0][1] = 0.0;
-  anim.pose[0][5] = 0.5;
+    gpio_put(stepper[0].DIR, true);
+    gpio_put(stepper[0].EN, true);
+    for (int i = 0; i < 6400; i++) // Backward 5000 steps
+    {
+      gpio_put(stepper[0].PUL, true);
+      sleep_us(50);
+      gpio_put(stepper[0].PUL, false);
+      sleep_us(50);
+    }
+  }
 
-  anim.pose[0][2] = 0.2;
-  anim.pose[0][7] = 0.5;
+  // struct Animation anim = (struct Animation){2, (uint32_t[2]){2000, 2000},
+  //                                            (pose *){pose_rest, pose_rest},
+  //                                            0};
 
-  anim.pose[0][3] = 1.0;
-  anim.pose[0][7] = 1.0;
+  // anim.pose[0][1] = 0.0;
+  // anim.pose[0][5] = 0.5;
 
-  anim.pose[1][1] = 0.5;
-  anim.pose[1][5] = 0.0;
+  // anim.pose[0][2] = 0.2;
+  // anim.pose[0][7] = 0.5;
 
-  anim.pose[1][2] = 0.5;
-  anim.pose[1][7] = 0.2;
+  // anim.pose[0][3] = 1.0;
+  // anim.pose[0][7] = 1.0;
 
-  anim.pose[1][3] = 0.5;
-  anim.pose[1][7] = 0.5;
+  // anim.pose[1][1] = 0.5;
+  // anim.pose[1][5] = 0.0;
+
+  // anim.pose[1][2] = 0.5;
+  // anim.pose[1][7] = 0.2;
+
+  // anim.pose[1][3] = 0.5;
+  // anim.pose[1][7] = 0.5;
 
   float last, now = to_ms_since_boot(get_absolute_time()) / 1000.0f;
   while (true) {
@@ -135,31 +159,7 @@ int main() {
     float deltaTime = now - last; // in seconds
 
     // Update Servos (Smooth)
-    for (int i = 0; i < 8; i++) {
-      struct Servo *s = &servo[i];
-
-      // pwm = low + % * (high-low)
-      float value = s->min + LIMIT(s->value, 0.0f, 1.0f) * (s->max - s->min);
-
-      // Set invalid prev
-      if (s->prev == 0)
-        s->prev = value;
-
-      // Smooth out movement
-      if (s->smoothing > 0) {
-        // pwm = (pwm * s_amount) + (prev * (100% - s_amount))
-        value = (value * s->smoothing) + (s->prev * (1.0 - s->smoothing));
-        s->prev = value;
-      }
-
-      // Double-Check Values
-      if (MAX(s->min, s->max) < value || value < MIN(s->min, s->max))
-        continue; // invalid value, something went wrong
-      // if (i == 3)
-      // printf("%.2f %.2f\n", s->value, value);
-
-      servo_setMillis(s->pin, value);
-    }
+    updateServos(servo);
 
     // if ((int)now % 2 == 0) {
     //   servo[1].value = 0.0;
@@ -182,7 +182,7 @@ int main() {
     //   }
     // }
 
-    animate(servo, anim);
+    // animate(servo, anim);
   }
 
   gpio_put(EM_RELAY, false);

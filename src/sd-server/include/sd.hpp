@@ -13,11 +13,11 @@ public:
   bool generate();
 
   bool show = false;
-  sd_image_t *result{};
+  sd_image_t *result = NULL;
 
   struct {
     const char *prompt = "dog";
-    const char *negative_prompt = "cat";
+    const char *negative_prompt = "";
 
     float min_cfg = 1.0f;
     float cfg_scale = 7.0f;

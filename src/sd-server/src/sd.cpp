@@ -25,8 +25,11 @@ SD::~SD() {
 }
 
 bool SD::generate() {
-  free(result->data);
-  free(result);
+  if (result) {
+    free(result->data);
+    free(result);
+    result = NULL;
+  }
 
   result = txt2img(ctx, config.prompt, config.negative_prompt, config.clip_skip,
                    config.cfg_scale, config.width, config.height,

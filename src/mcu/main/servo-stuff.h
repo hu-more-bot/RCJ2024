@@ -90,3 +90,31 @@ void setupServos(struct Servo servo[8], pose initialPose) {
 
   setPose(servo, initialPose);
 }
+
+void updateServos(struct Servo servo[8]) {
+  for (int i = 0; i < 8; i++) {
+    struct Servo *s = &servo[i];
+
+    // pwm = low + % * (high-low)
+    float value = s->min + LIMIT(s->value, 0.0f, 1.0f) * (s->max - s->min);
+
+    // Set invalid prev
+    if (s->prev == 0)
+      s->prev = value;
+
+    // Smooth out movement
+    if (s->smoothing > 0) {
+      // pwm = (pwm * s_amount) + (prev * (100% - s_amount))
+      value = (value * s->smoothing) + (s->prev * (1.0 - s->smoothing));
+      s->prev = value;
+    }
+
+    // Double-Check Values
+    if (MAX(s->min, s->max) < value || value < MIN(s->min, s->max))
+      continue; // invalid value, something went wrong
+    // if (i == 3)
+    // printf("%.2f %.2f\n", s->value, value);
+
+    servo_setMillis(s->pin, value);
+  }
+}

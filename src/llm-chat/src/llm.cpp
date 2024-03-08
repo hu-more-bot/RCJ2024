@@ -4,8 +4,8 @@
 
 #include <stdexcept>
 
-#define PAINTER "<|ai festő|>" //  "<|ai painter|>"
-#define CLIENT "<|vásárló|>"   //"<|client|>"
+#define PAINTER "<|ai painter|>"
+#define CLIENT "<|client|>"
 
 void cb_log_disable(enum ggml_log_level, const char *, void *) {}
 

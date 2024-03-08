@@ -5,10 +5,12 @@
 
 #include <sd-client.hpp>
 
+#define TEXT_INPUT
+
 #define LLM_MODEL "../models/zephyr_q4.gguf"
 #define TTS_MODEL "../models/piper/ryan.onnx"
 #define STT_MODEL "../models/ggml-tiny.bin"
-#define PROMPT "../prompts/en-v3.txt"
+#define PROMPT "../prompts/en-v4.txt"
 
 char *loadPrompt(const char *path);
 std::vector<std::string> parse(std::string &str);
@@ -21,8 +23,10 @@ int main() {
   TTS tts(TTS_MODEL);
   AL al;
 
+#ifndef TEXT_INPUT
   printf("Loading STT...\n");
   STT stt(STT_MODEL);
+#endif
 
   printf("Starting SDClient...\n");
   SDClient sd;
@@ -31,14 +35,17 @@ int main() {
   while (true) {
     // Wait for user input
     printf("User In: \n");
-    // char user_in[128];
-    // memset(user_in, 0, sizeof(user_in));
-    // fgets(user_in, sizeof(user_in), stdin);
+#ifdef TEXT_INPUT
+    char user_in[128];
+    memset(user_in, 0, sizeof(user_in));
+    fgets(user_in, sizeof(user_in), stdin);
+#else
+    std::string user_in_s = stt.listen();
+    char user_in[128];
+    printf("Said: '%s'\n", user_in);
+#endif
 
-    std::string user_in = stt.listen();
-    printf("Said: '%s'\n", user_in.c_str());
-
-    if (!strncasecmp(user_in.c_str(), "exit", 4))
+    if (!strncasecmp(user_in, "exit", 4))
       break;
 
     // Generate Response
@@ -55,7 +62,7 @@ int main() {
     al.add(buf, 44100 / 2);
 
     // Process Commands
-    printf("commands: %i\n", commands.size());
+    printf("commands: %zu\n", commands.size());
     for (auto c : commands) {
       // printf("%s\n", c.c_str());
       sd.send(c);

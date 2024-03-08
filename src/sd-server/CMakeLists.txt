@@ -22,11 +22,11 @@ set(SOURCES
 set(LIBRARIES
     # Common    
     m
-    websockets
     
     # UI
     GL
     glfw
+    SDL2
 
     # AI
     stable-diffusion
