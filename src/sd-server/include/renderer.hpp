@@ -14,14 +14,14 @@ public:
   // Clear Screen
   static void clear(GLuint R = 0, GLuint G = 0, GLuint B = 0);
 
-  // Add Mesh
-  size_t mesh(std::vector<float> vertices, std::vector<uint32_t> indices);
+  // Add Resources
 
-  // Add Texture (Load into OpenGL)
-  size_t add(unsigned char *data, int width, int height, int channels);
+  size_t mesh(std::vector<float> vertices, std::vector<uint32_t> indices);
+  // size_t shader(std::string vertex, std::string fragment);
+  size_t texture(unsigned char *data, int width, int height, int channels);
 
   // Draw Rect
-  void draw(size_t id);
+  void draw(size_t vID, size_t tID);
 
 private:
   struct V {
@@ -29,8 +29,8 @@ private:
     size_t size;
   };
 
-  std::vector<V> v;
-
   GLuint shader;
-  std::vector<GLuint> textures;
+  std::vector<V> v;
+  // std::vector<GLint> s;
+  std::vector<GLuint> t;
 };

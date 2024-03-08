@@ -74,15 +74,19 @@ Renderer::Renderer(const std::string &name) : Window(name) {
   };
 
   mesh(vertices, indices);
+
+  // Config OpenGL
+  // glEnable(GL_BLEND);
+  // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  // glEnable(GL_CULL_FACE);
 }
 
 Renderer::~Renderer() {
   // Delete Buffers
-  for (auto vert : v)
-    glDeleteBuffers(3, (GLuint *)&vert);
+  // glDeleteBuffers(3, &VAO);
 
   // Delete Textures
-  glDeleteTextures(textures.size(), textures.data());
+  // glDeleteTextures(textures.size(), textures.data());
 }
 
 void Renderer::clear(GLuint R, GLuint G, GLuint B) {
@@ -93,24 +97,26 @@ void Renderer::clear(GLuint R, GLuint G, GLuint B) {
 
 size_t Renderer::mesh(std::vector<float> vertices,
                       std::vector<uint32_t> indices) {
-  GLuint V[3];
+  V vert;
+  vert.size = indices.size();
 
-  glGenVertexArrays(3, V);
+  glGenVertexArrays(1, &vert.VAO);
+  glGenBuffers(1, &vert.VBO);
+  glGenBuffers(1, &vert.EBO);
 
-  glBindVertexArray(V[0]);
+  glBindVertexArray(vert.VAO);
 
-  glBindBuffer(GL_ARRAY_BUFFER, V[1]);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices[0]), vertices.data(),
-               GL_STATIC_DRAW);
+  glBindBuffer(GL_ARRAY_BUFFER, vert.VBO);
+  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertices[0]),
+               vertices.data(), GL_STATIC_DRAW);
 
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, V[2]);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices[0]), indices.data(),
-               GL_STATIC_DRAW);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vert.EBO);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(indices[0]),
+               indices.data(), GL_STATIC_DRAW);
 
   // position attribute
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
   glEnableVertexAttribArray(0);
-
   // texture coord attribute
   glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
                         (void *)(2 * sizeof(float)));
@@ -121,11 +127,12 @@ size_t Renderer::mesh(std::vector<float> vertices,
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_CULL_FACE);
 
-  v.push_back({V[0], V[1], V[2], indices.size()});
+  v.push_back(vert);
   return v.size() - 1;
 }
 
-size_t Renderer::add(unsigned char *data, int width, int height, int channels) {
+size_t Renderer::texture(unsigned char *data, int width, int height,
+                         int channels) {
   GLuint id;
 
   // Generate Empty Texture
@@ -164,30 +171,27 @@ size_t Renderer::add(unsigned char *data, int width, int height, int channels) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-  textures.push_back(id);
-  return textures.size() - 1;
+  t.push_back(id);
+  return t.size() - 1;
 }
 
-void Renderer::draw(size_t id) {
+void Renderer::draw(size_t vID, size_t tID) {
   // TODO optimize using draw.mesh
   glUseProgram(shader);
 
-  // glUniform
+  glUniform1i(glGetUniformLocation(shader, "tex"), t[tID]);
 
-  glBindVertexArray(v[id].VAO);
-  glDrawElements(GL_TRIANGLES, v[id].size, GL_UNSIGNED_INT, nullptr);
-  printf("%i\n", glGetError());
+  glBindVertexArray(v[vID].VAO);
+  glDrawElements(GL_TRIANGLE_FAN, v[vID].size, GL_UNSIGNED_INT, nullptr);
+
+  int err = glGetError();
+  if (err)
+    printf("glError: %i\n", err);
 }
 
 const char *_shader[] = {"#version 300 es\n"
-
                          "layout(location = 0) in vec2 aPos;\n"
                          "layout(location = 1) in vec2 aTexCoord;\n"
-
-                         "uniform struct {\n"
-                         "vec2 center;\n"
-                         "vec2 size;\n"
-                         "} v;\n"
 
                          "out vec2 texcoord;\n"
 
@@ -201,7 +205,8 @@ const char *_shader[] = {"#version 300 es\n"
                          "out vec4 FragColor;\n"
 
                          "in vec2 texcoord;\n"
+                         "uniform sampler2D tex;\n"
 
                          "void main() {\n"
-                         "FragColor = vec4(1.0, 0.4, 0.0, 1.0);\n"
+                         "FragColor = texture(tex, texcoord);\n"
                          "}"};

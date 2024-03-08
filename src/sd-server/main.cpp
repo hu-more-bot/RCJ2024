@@ -20,12 +20,12 @@ int main() {
   Renderer renderer("RCJ2024");
 
   printf("Loading Stable Diffusion...\n");
-  SD sd("../models/sd-v1-4.ckpt");
-  sd.config.width = renderer.width;
-  sd.config.height = renderer.height;
+  // SD sd("../models/sd-v1-4.ckpt");
+  // sd.config.width = 768;   // renderer.width;
+  // sd.config.height = 1366; // renderer.height;
 
   printf("Starting Server...\n");
-  SDServer sdServer(callback, &sd);
+  // SDServer sdServer(callback, &sd);
 
   // std::vector<float> verts = {
   //     0.0, -1.5, 0, 0, //
@@ -40,11 +40,11 @@ int main() {
 
   // std::thread render(SD::txt2img, "../models/...", "prompt");
 
-  float past, now = time();
+  // float past, now = time();
   while (renderer.update()) {
-    past = now;
-    now = time();
-    float deltaTime = now - past;
+    // past = now;
+    // now = time();
+    // float deltaTime = now - past;
 
     if (renderer.key("esc"))
       renderer.exit();
@@ -53,7 +53,7 @@ int main() {
 
     // if (render.joinable())
     // if (sd.show)
-    // renderer.draw(1);
+    renderer.draw(0, 0);
 
     // sdServer.update();
   }
@@ -69,25 +69,20 @@ int main() {
 static void callback(char *message, int len, void *user) {
   auto sd = (SD *)user;
 
-  printf("new message: '%s'\n", message);
-  if (!strcasecmp(message, "PAINT"))
+  if (!strncasecmp(message, "PAINT", 5))
     goto paint;
-  else if (!strcasecmp(message, "SHOW"))
+  else if (!strncasecmp(message, "SHOW", 4))
     goto show;
   return;
 
 paint:
   printf("generating image\n");
-  sd->show = false;
-  sd->config.prompt = message;
+  sd->config.prompt = message + sizeof("PAINT: ");
   sd->generate();
-  // TODO properly generate image
   return;
 
 show:
   printf("showing image\n");
-
-  sd->show = true;
   // TODO show image
   return;
 }
