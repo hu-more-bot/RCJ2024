@@ -1,13 +1,12 @@
-#include <SDL2/SDL_surface.h>
-#include <SDL2/SDL_video.h>
-#include <renderer.hpp>
 #include <sd-server.hpp>
 #include <sd.hpp>
 
-#include <SDL2/SDL.h>
+#include <Artifex/core/renderer.hpp>
 
 #include <cstring>
 #include <ctime>
+
+using namespace Artifex;
 
 static void callback(char *message, int len, void *user);
 
@@ -17,71 +16,76 @@ float time() {
   clock_gettime(CLOCK_MONOTONIC, &res);
   return (float)(1000.0f * res.tv_sec + (float)res.tv_nsec / 1e6) / 1000.0f;
 }
+char *loadTXT(const char *path);
 
 int main() {
   printf("Initializing Renderer...\n");
-  // Renderer renderer("RCJ2024");
-  // The window we'll be rendering to
-  SDL_Window *window = NULL;
+  Renderer renderer("RCJ2024", {480, 720});
+  // renderer.fullscreen();
 
-  // The surface contained by the window
-  SDL_Surface *screenSurface = NULL;
+  /* Load Shader */ {
+    FILE *f = fopen("../shader/main.glsl", "r");
 
-  // Initialize SDL
-  if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-    printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
-  }
+    if (f) {
+      uint8_t current = 0;
 
-  window = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED,
-                            SDL_WINDOWPOS_UNDEFINED, 768, 1366,
-                            SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP);
-  if (window == NULL) {
-    printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
-    exit(1);
+      // RAW Shader Code (trash, vertex, fragment, geometry)
+      std::string code[4];
+
+      char line[256];
+      while (fgets(line, sizeof(line), f)) {
+        char index[10], parameter[10];
+        sscanf(line, "%9s %9s", index, parameter);
+
+        if (!strcmp(index, "#shader")) {
+          if (!strcmp(parameter, "vertex"))
+            current = 1;
+          else if (!strcmp(parameter, "fragment"))
+            current = 2;
+          else if (!strcmp(parameter, "geometry"))
+            current = 3;
+          else
+            Log::warning("Main/Load", "Invalid Shader type: %s", parameter);
+        } else if (!strcmp(index, "#script")) {
+          Log::warning("Main/Load", "Shader Scripts are not supported YET!\n");
+        } else {
+          code[current] += line;
+        }
+      }
+
+      fclose(f);
+
+      renderer.load_shader(code[1].c_str(), code[2].c_str(), code[3].c_str());
+    } else {
+      Log::error("Main/Load", "Failed to Open Shader File");
+    }
   }
 
   printf("Loading Stable Diffusion...\n");
-  // SD sd("../models/sd-v1-4.ckpt");
-  // sd.config.width = 768;   // renderer.width;
-  // sd.config.height = 1366; // renderer.height;
+  SD sd("../models/sd-v1-4.ckpt");
+  sd.config.width = 512;  // renderer.width;
+  sd.config.height = 512; // renderer.height;
 
   printf("Starting Server...\n");
-  // SDServer sdServer(callback, &sd);
+  SDServer sdServer(callback, &sd);
 
-  // std::vector<float> verts = {
-  //     0.0, -1.5, 0, 0, //
-  //     0.3, 0.0,  0, 0, //
-  //     0.0, 0.3,  0, 0, //
-  //     0.3, 0.0,  0, 0  //
-  // };
-  SDL_Surface *window_surface = SDL_GetWindowSurface(window);
+  bool has_image = false;
+  while (renderer.update()) {
+    renderer.clear({});
 
-  // SDL_Surface image;
-  // image.w = 512;
-  // image.h = 512;
-  // image.pixels = {255, 255, 0};
-  // SDL_CreateRGBSurfaceFrom(data, width, height, bytesPerPixel * 8, pitch,
-  // Rmask,
-  //  Gmask, Bmask, Amask);
-  unsigned char data[] = {255, 140, 0};
-  SDL_Surface *image = SDL_CreateRGBSurfaceFrom(data, 1, 1, 1, 0, 0, 0, 0, 0);
-
-  bool keep_window_open = true;
-  while (keep_window_open) {
-    bool keep_window_open = true;
-    while (keep_window_open) {
-      SDL_Event e;
-      while (SDL_PollEvent(&e) > 0) {
-        switch (e.type) {
-        case SDL_QUIT:
-          keep_window_open = false;
-          break;
-        }
-
-        SDL_BlitSurface(image, NULL, window_surface, NULL);
-        SDL_UpdateWindowSurface(window);
+    if (sd.show) {
+      if (has_image) {
+        glDeleteTextures(1, &renderer.textures[0]);
+        renderer.textures.clear();
       }
+      renderer.load_texture(sd.result->data,
+                            {sd.result->width, sd.result->height},
+                            sd.result->channel);
+      has_image = true;
+      sd.show = false;
     }
+
+    renderer.draw({}, {0.7}, 0.0f, has_image ? 2 : 0, 0.2, {}, 0);
   }
 
   // // float past, now = time();
@@ -104,12 +108,6 @@ int main() {
   //   // sdServer.update();
   // }
 
-  // Destroy window
-  SDL_DestroyWindow(window);
-
-  // Quit SDL subsystems
-  SDL_Quit();
-
   // while (!render.joinable())
   //   ;
 
@@ -121,17 +119,44 @@ int main() {
 static void callback(char *message, int len, void *user) {
   auto sd = (SD *)user;
 
-  if (!strncasecmp(message, "PAINT", 5))
+  if (!strncasecmp(message, "PAINT: ", 7))
     goto paint;
   // else if (!strncasecmp(message, "SHOW", 4))
   //   goto show;
   return;
 
 paint:
-  printf("generating image\n");
-  sd->config.prompt = message + sizeof("PAINT: ");
+  if (sd->show)
+    return;
+
+  printf("Generating Image; Prompt: '%s'\n", message + sizeof("PAINT: ") - 1);
+  sd->config.prompt = message + sizeof("PAINT: ") - 1;
   sd->config.seed = time(0);
   sd->generate();
+  sd->show = true;
+}
 
-  return;
+char *loadTXT(const char *path) {
+  // Open File
+  FILE *f = NULL;
+  if (!(f = fopen(path, "r"))) {
+    printf("Failed to open file: %s\n", path);
+    return NULL;
+  }
+
+  // Get File Size
+  fseek(f, 0, SEEK_END);
+  size_t size = ftell(f);
+  fseek(f, 0, SEEK_SET);
+
+  // Read File
+  char *out = (char *)malloc(sizeof(char) * size);
+
+  if (!fread(out, size, 1, f)) {
+    printf("Failed to read file: %s\n", path);
+    free(out);
+    return NULL;
+  }
+
+  return out;
 }

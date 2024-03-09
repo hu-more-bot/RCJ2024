@@ -7,15 +7,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 set(SOURCES
     main.cpp
 
-    # UI
-    src/window.cpp
-    src/renderer.cpp
-
     # AI
     src/sd.cpp
   
     src/sd-server.cpp
-    src/GL/glad.c
 )
 
 # Libraries
@@ -24,9 +19,9 @@ set(LIBRARIES
     m
     
     # UI
-    GL
+    Artifex
     glfw
-    SDL2
+    GL
 
     # AI
     stable-diffusion

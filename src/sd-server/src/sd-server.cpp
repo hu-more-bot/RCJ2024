@@ -2,8 +2,8 @@
 
 #include <stdexcept>
 
-#define TIMEOUT 2 * 60 // 2 minutes
-#define PORT 4001
+#define TIMEOUT -1 // none //2 * 60 // 2 minutes
+#define PORT 8000
 
 struct Sock {
   int id;
@@ -108,7 +108,8 @@ static void *accepter(void *arg) {
     sock->latest = time(0);
     sock->head = sd;
     pthread_create(&sock->service, NULL, service, sock);
-    pthread_create(&sock->timeouter, NULL, timeouter, sock);
+    if (TIMEOUT > 0)
+      pthread_create(&sock->timeouter, NULL, timeouter, sock);
 
     // }
   }
