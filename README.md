@@ -48,5 +48,24 @@ An interview with an AI Painter
 - LLM: [HuggingFaceH4/zephyr-7b-alpha](https://huggingface.co/HuggingFaceH4/zephyr-7b-alpha)
 - Image Gen: [TODO](TODO)
 
-## Hardware
-TODO
+## Programs
+
+### [llm-chat](src/llm-chat)
+
+This is the code that runs the Speech-aspect of the robot. It runs the whisper, llm and piper models while connecting every part of the robot.
+
+### [sd-server](src/sd-server)
+
+This code generates the image and renders it to the screen. There's nothing else to it.
+
+### [mcu](src/mcu)
+
+This is the code that runs on the MCU, controlling every motor.
+
+### [tracker](src/tracker)
+
+This is an Android App that runs the face tracking and also renders the eyes
+
+### [pose-sim](src/pose-sim)
+
+This is a pose simulation to be able to quickly animate the robot's arms (without breaking them)
