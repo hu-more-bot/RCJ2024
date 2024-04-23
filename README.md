@@ -18,6 +18,7 @@ After the filtering is completed, the "remaining" text gets sent to a [piper mod
 The arms are powered by 4 [xyz servos]() each, and the base is driven by 2 [xyz stepper motors](), which are powered by a 12 volt lead-acid battery. This system is controlled by a [Raspberry Pi Pico]() that receives the instructions from the laptop with a USB cable.
 
 It gets sent the poses to take, or pose-animations to play which are then written to the servos, and alsogets if it should turn right or left, which it does.
+exit
 
 ```mermaid
 graph TB

@@ -3,9 +3,9 @@
 #include <stt.hpp>
 #include <tts.hpp>
 
-#include <sd-client.hpp>
+#include <client.hpp>
 
-#define TEXT_INPUT
+#define SPEECH_INPUT false
 
 #define LLM_MODEL "../models/zephyr_q4.gguf"
 #define TTS_MODEL "../models/piper/ryan.onnx"
@@ -23,26 +23,31 @@ int main() {
   TTS tts(TTS_MODEL);
   AL al;
 
-#ifndef TEXT_INPUT
+#if SPEECH_INPUT
   printf("Loading STT...\n");
   STT stt(STT_MODEL);
 #endif
 
-  printf("Starting SDClient...\n");
-  SDClient sd;
+  // Connect to SD-Server
+  printf("Connecting to SD-Server...\n");
+  Client sd(8000);
+
+  // Connect to PoseSim (not necessary)
+  printf("Connecting to SD-Server...\n");
+  Client poseSim(80001);
 
   printf("Enterint Main Loop...\n");
   while (true) {
     // Wait for user input
     printf("User In: \n");
-#ifdef TEXT_INPUT
-    char user_in[128];
-    memset(user_in, 0, sizeof(user_in));
-    fgets(user_in, sizeof(user_in), stdin);
-#else
+#if SPEECH_INPUT
     std::string user_in_s = stt.listen();
     char user_in[128];
     printf("Said: '%s'\n", user_in);
+#else
+    char user_in[128];
+    memset(user_in, 0, sizeof(user_in));
+    fgets(user_in, sizeof(user_in), stdin);
 #endif
 
     if (!strncasecmp(user_in, "exit", 4))
@@ -66,6 +71,7 @@ int main() {
     for (auto c : commands) {
       // printf("%s\n", c.c_str());
       sd.send(c);
+      // poseSim.send("idle");
     }
 
     // Play Response Audio

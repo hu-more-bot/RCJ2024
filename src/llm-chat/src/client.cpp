@@ -1,4 +1,4 @@
-#include <sd-client.hpp>
+#include <client.hpp>
 
 #include <netdb.h>
 #include <netinet/in.h>
@@ -9,7 +9,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-SDClient::SDClient(int port, const char *address) {
+Client::Client(int port, const char *address) {
   struct sockaddr_in serv_addr;
   struct hostent *server;
 
@@ -34,9 +34,9 @@ SDClient::SDClient(int port, const char *address) {
   }
 }
 
-SDClient::~SDClient() { close(sockfd); }
+Client::~Client() { close(sockfd); }
 
-void SDClient::send(std::string msg) {
+void Client::send(std::string msg) {
   int n = write(sockfd, msg.data(), msg.size());
   if (n != msg.size())
     fprintf(stderr, "%s: failed to send message\n", __func__);

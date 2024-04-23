@@ -1,9 +1,19 @@
 #include <server.hpp>
 
+#include <netdb.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <stdexcept>
 
+#include <cstring>
+
 #define TIMEOUT -1 // none //2 * 60 // 2 minutes
-#define PORT 8000
 
 struct Sock {
   int id;
@@ -11,10 +21,10 @@ struct Sock {
 
   pthread_t service, timeouter; // threads
 
-  SDServer *head;
+  Server *head;
 };
 
-static void *service(void *arg) {
+void *Server::service(void *arg) {
   Sock *sock = (Sock *)arg;
 
   int len;
@@ -42,7 +52,7 @@ static void *service(void *arg) {
       break;
     }
 
-    sock->head->callback(buffer, len, sock->head->user);
+    sock->head->m_callback(buffer, len);
 
     sleep(1);
   }
@@ -52,7 +62,7 @@ static void *service(void *arg) {
   return NULL;
 }
 
-static void *timeouter(void *arg) {
+void *Server::timeouter(void *arg) {
   Sock *sock = (Sock *)arg;
 
   do {
@@ -70,29 +80,29 @@ static void *timeouter(void *arg) {
   return NULL;
 }
 
-static void *accepter(void *arg) {
+void *Server::accepter(void *arg) {
   // int *sockfd = (int *)arg;
-  auto sd = (SDServer *)arg;
+  auto sd = (Server *)arg;
 
   // Open Socket
-  if ((sd->sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+  if ((sd->m_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     throw std::runtime_error("failed to open socket");
 
   // Start Server
   struct sockaddr_in serv_addr {};
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_addr.s_addr = INADDR_ANY;
-  serv_addr.sin_port = htons(PORT);
-  if (bind(sd->sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+  serv_addr.sin_port = htons(sd->m_port);
+  if (bind(sd->m_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
     throw std::runtime_error("failed to bind port");
 
-  listen(sd->sockfd, 5);
+  listen(sd->m_sockfd, 5);
 
   while (true) {
     // Accept Connection
     struct sockaddr_in client;
     socklen_t len = sizeof(client);
-    int new_socket = accept(sd->sockfd, (struct sockaddr *)&client, &len);
+    int new_socket = accept(sd->m_sockfd, (struct sockaddr *)&client, &len);
 
     if (new_socket < 0) {
       fprintf(stderr, "Failed to accept connection\n");
@@ -117,8 +127,8 @@ static void *accepter(void *arg) {
   return NULL;
 }
 
-SDServer::SDServer(messageCallback callback, void *user, int port)
-    : callback(callback), user(user) {
+Server::Server(const std::function<void(char *, int)> &callback, int port)
+    : m_callback(callback), m_port(port) {
   // socklen_t clilen = sizeof(cli_addr);
   // int newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &clilen);
   // if (newsockfd < 0)
@@ -138,10 +148,10 @@ SDServer::SDServer(messageCallback callback, void *user, int port)
   // return 0;
 
   // Launch threads
-  pthread_create(&accept, NULL, accepter, this);
+  pthread_create(&m_accept, NULL, accepter, this);
 }
 
-SDServer::~SDServer() {
-  pthread_cancel(accept);
-  close(sockfd);
+Server::~Server() {
+  pthread_cancel(m_accept);
+  close(m_sockfd);
 }

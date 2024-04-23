@@ -15,7 +15,7 @@ set(SOURCES
     src/piper.cpp
     src/al.cpp
 
-    src/sd-client.cpp
+    src/client.cpp
 )
 
 # Libraries

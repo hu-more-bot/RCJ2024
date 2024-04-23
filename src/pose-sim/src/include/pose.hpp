@@ -18,5 +18,9 @@ struct Pose {
 
   std::unordered_map<std::string, std::vector<frame>> anims;
 
+  // Save Pose
+  bool save(const char *path);
+
+  // Load Pose from file
   static Pose load(const char *path);
 };

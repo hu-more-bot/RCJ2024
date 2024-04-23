@@ -8,6 +8,7 @@ set(SOURCES
     src/main.cpp
 
     src/pose.cpp
+    src/server.cpp
 )
 
 # Libraries

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <libwebsockets.h>
-
 #include <pthread.h>
 
 class SDServer {

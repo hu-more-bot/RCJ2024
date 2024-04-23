@@ -2,6 +2,36 @@
 
 #include <cstring>
 
+bool Pose::save(const char *path) {
+  FILE *f = fopen(path, "w");
+  if (!f) {
+    fprintf(stderr, "Failed to create pose file '%s'\n", path);
+    return false;
+  }
+
+  fprintf(f, "// Poses\n");
+  for (auto [name, data] : poses) {
+    fprintf(f, "pose: %s\n", name.c_str());
+    fprintf(f, "- left: %f %f %f %f\n", //
+            data.left[0], data.left[1], data.left[2], data.left[3]);
+    fprintf(f, "- right: %f %f %f %f\n", //
+            data.left[0], data.left[1], data.left[2], data.left[3]);
+  }
+
+  fprintf(f, "\n// Anims\n");
+  for (auto [name, data] : anims) {
+    fprintf(f, "anim: %s\n", name.c_str());
+
+    // Add Frames
+    for (int i = 0; i < data.size(); i++) {
+      const frame &frame = data[i];
+      fprintf(f, "%i: %s %f\n", i, frame.pose.c_str(), frame.delay);
+    }
+  }
+
+  return true;
+}
+
 Pose Pose::load(const char *path) {
   Pose pose;
 

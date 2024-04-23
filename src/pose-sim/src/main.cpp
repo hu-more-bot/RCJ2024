@@ -1,10 +1,13 @@
 // #include <Artifex/core/window.hpp>
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
-#include <pose.hpp>
+#include <cstring>
 
 #include <cmath>
 #include <ctime>
+
+#include <pose.hpp>
+#include <server.hpp>
 
 // using namespace Artifex;
 
@@ -31,6 +34,8 @@ struct {
   pose_t value, prev;
 } smooth;
 
+void clbck(char *, int, void *) {}
+
 int main() {
   srand(time(0));
 
@@ -46,26 +51,70 @@ int main() {
   glfwSetWindowAspectRatio(window, 1, 1);
   glfwMakeContextCurrent(window);
 
-  // Print App Info
-  printf("Pose Simulator for RCJ2024\nby Team HU-More-Bot\n\n");
-  printf("Controls:\n");
-  printf("- Use the Arrow Keys to rotate the model\n");
-  printf("- Pressing Space reloads the current pose\n\n");
-
-  Pose pose = Pose::load("../template.pose");
-
   glLineWidth(6);
   glPointSize(4);
   glEnable(GL_DEPTH_TEST);
   float past, now = time();
 
+  // Print App Info
+  printf("Pose Simulator for RCJ2024\nby Team HU-More-Bot\n\n");
+  printf("Controls:\n");
+  printf("- Use the Arrow Keys to rotate the pose\n");
+  printf("- Press 'L' to load a new pose\n");
+  printf("- Press 'P' to activate a pose\n");
+  printf("- Press 'A' to activate an animation\n");
+  printf("- Press Space to reloads the current pose\n");
+  printf("- Press 'O' for orbiting camera; rotating stops it\n\n");
+
+  // Pose Service
   float start = now;
   size_t state = 0;
+  char path[128] = "../template.pose";
+  Pose pose = Pose::load(path);
 
+  bool anim = false;
+  char name[16];
+  pose_t target{};
+
+  // Camera & UI
   float camera[3]{};
+  bool orbiting = false;
+  bool hasKey{};
 
-  bool hasKey = false;
-  while (!glfwWindowShouldClose(window)) { // window.update()) {
+  // Start Server
+  Server server(
+      [&](char *msg, int len) {
+        char action[8], data[16];
+        sscanf(msg, "%s %s", action, data);
+
+        // Process Message
+        if (!strncmp("POSE:", action, 5)) {
+          // Set Pose
+          if (pose.poses.count(data)) {
+            strncpy(name, data, 16);
+            anim = false;
+            target = pose.poses[name];
+          }
+
+          printf("Received%s pose '%s'\n",
+                 pose.poses.count(data) ? "" : " invalid", data);
+        } else if (!strncmp("ANIM:", action, 5)) {
+          // Set Anim
+          if (pose.anims.count(data)) {
+            strncpy(name, data, 16);
+            anim = true;
+          }
+
+          printf("Received%s anim '%s'\n",
+                 pose.anims.count(data) ? "" : " invalid", data);
+        } else {
+          // Nothing
+        }
+      },
+      8001);
+
+  // Main Loop
+  while (!glfwWindowShouldClose(window)) {
     // Update View
     int w, h;
     glfwGetFramebufferSize(window, &w, &h);
@@ -79,23 +128,74 @@ int main() {
     now = time();
     float deltaTime = now - past;
 
+    // Check Key Inputs
     if (glfwGetKey(window, GLFW_KEY_SPACE))
       hasKey = true;
     else if (hasKey == true) {
       hasKey = false;
-      pose = Pose::load("../template.pose");
+      pose = Pose::load(path);
       state = 0;
     }
 
-    // Calculate Camera
-    if (glfwGetKey(window, GLFW_KEY_UP) && camera[0] > -89)
+    // Load Pose
+    if (glfwGetKey(window, GLFW_KEY_L)) {
+      printf("Enter file name: ");
+      scanf("%s", path);
+
+      pose = Pose::load(path);
+      state = 0, start = now;
+    }
+
+    // Orbiting Camera
+    if (glfwGetKey(window, GLFW_KEY_O)) {
+      orbiting = true;
+    }
+
+    // Activate Pose
+    if (glfwGetKey(window, GLFW_KEY_P)) {
+      char p[16];
+      printf("Enter pose name: ");
+      scanf("%s", p);
+
+      if (!pose.poses.count(p)) {
+        printf("Pose '%s' not found\n", p);
+      } else {
+        strncpy(name, p, 16);
+        anim = false;
+        target = pose.poses[name];
+      }
+    }
+
+    // Activate Animation
+    if (glfwGetKey(window, GLFW_KEY_A)) {
+      char a[16];
+      printf("Enter animation name: ");
+      scanf("%s", a);
+
+      if (!pose.anims.count(a)) {
+        printf("Animation '%s' not found\n", a);
+      } else {
+        strncpy(name, a, 16);
+        anim = true;
+      }
+    }
+
+    // Rotate Camera
+    if (glfwGetKey(window, GLFW_KEY_UP) && camera[0] > -89) {
       camera[0] -= 45 * deltaTime;
-    if (glfwGetKey(window, GLFW_KEY_DOWN) && camera[0] < 89)
+    } else if (glfwGetKey(window, GLFW_KEY_DOWN) && camera[0] < 89) {
       camera[0] += 45 * deltaTime;
-    if (glfwGetKey(window, GLFW_KEY_RIGHT))
+    } else if (glfwGetKey(window, GLFW_KEY_RIGHT)) {
       camera[1] += 45 * deltaTime;
-    if (glfwGetKey(window, GLFW_KEY_LEFT))
+      orbiting = false;
+    } else if (glfwGetKey(window, GLFW_KEY_LEFT)) {
       camera[1] -= 45 * deltaTime;
+      orbiting = false;
+    }
+
+    if (orbiting) {
+      camera[1] += 22.5 * deltaTime;
+    }
 
     glLoadIdentity();
     glRotatef(camera[0], 1, 0, 0);
@@ -117,20 +217,22 @@ int main() {
     //   c -= 15 * deltaTime;
 
     // Play Animation
-    const auto &anim = pose.anims["idle"];
-    if (now > start + anim[state].delay) {
-      start = now;
-      state++;
+    if (anim) {
+      const auto &anim = pose.anims[name];
+      if (!anim.empty() && now > start + anim[state].delay) {
+        start = now;
+        state++;
 
-      if (state >= anim.size())
-        state = 0;
-
-      // printf("State %zu\n", state, anim[state].delay);
+        if (state >= anim.size())
+          state = 0;
+      }
+      target =
+          pose.poses.size() > state ? pose.poses[anim[state].pose] : pose_t();
     }
-    smooth.value = pose.poses[anim[state].pose];
 
-    pose_t p;
     // Update Smooth Values
+    pose_t p;
+    smooth.value = target;
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 2; j++) {
         const float &v = (j == 0 ? smooth.value.left : smooth.value.right)[i];

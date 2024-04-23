@@ -27,7 +27,7 @@ anim: idle
 
 // set frames `num: {left} {right} delay`
 - frames:
-3: null 0
+//3: null 0
 //1: null 3
 //2: rest 3
 3: a 2
