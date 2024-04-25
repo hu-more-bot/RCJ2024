@@ -9,10 +9,13 @@
 #include <pose.hpp>
 #include <server.hpp>
 
-// using namespace Artifex;
-
 #define rads(degs) ((degs) * M_PI / 180.0)
 #define degs(rads) ((rads) * 180.0 / M_PI)
+
+#define MIN(a, b) (a < b ? a : b)
+#define MAX(a, b) (a > b ? a : b)
+#define LIMIT(x, min, max) (MIN(MAX(x, min), max))
+#define PERCENT(x) LIMIT(x, 0, 1)
 
 const float armLength[] = {0.3, 0.2};
 
@@ -70,7 +73,8 @@ int main() {
   float start = now;
   size_t state = 0;
   char path[128] = "../template.pose";
-  Pose pose = Pose::load(path);
+  // Pose pose = Pose::load(path);
+  Pose pose = Pose::importBin("../test.bin");
 
   bool anim = false;
   char name[16];
@@ -144,6 +148,15 @@ int main() {
 
       pose = Pose::load(path);
       state = 0, start = now;
+    }
+
+    // Export
+    if (glfwGetKey(window, GLFW_KEY_E)) {
+      printf("Enter file name: ");
+      char name[32];
+      scanf("%s", name);
+
+      pose.exportBin(name);
     }
 
     // Orbiting Camera
@@ -239,8 +252,7 @@ int main() {
         float &prev = (j == 0 ? smooth.prev.left : smooth.prev.right)[i];
 
         // pwm = low + % * (high-low)
-        // float v = s->min + LIMIT(value, 0.0f, 1.0f) * (s->max - s->min);
-        float value = v;
+        float value = PERCENT(v);
 
         // Set invalid prev
         if (prev == 0)
