@@ -36,43 +36,9 @@ bool Pose::save(const char *path) {
 }
 
 bool Pose::exportBin(const char *path) {
-  /*
-  File Format:
-
-  (4 byte) char magic ("ANPO")
-
-  (1 byte) unsigned int pose_count
-  (x * 8 * 4 byte) float[8] poses
-
-  (1 byte) unsigned int anim_count
-  (y * 4 * z byte) [
-    (1 byte) unsigned int frame_count
-    (z * 8 byte) [
-      (1 byte) unsigned int pose id
-      (4 byte) float delay
-    ] frames
-  ] anims
-  */
-
   FILE *f = fopen(path, "wb");
   if (!f)
     return false;
-
-  // struct {
-  //   char magic[4] = {'A', 'N', 'P', 'O'};
-
-  //   uint8_t poses;
-  //   uint32_t *pose[8];
-
-  //   uint8_t anims;
-  //   struct {
-  //     uint8_t frames;
-  //     struct {
-  //       uint8_t poseID;
-  //       float delay;
-  //     } *frame;
-  //   } *anim;
-  // } bin;
 
   std::unordered_map<std::string, uint8_t> ids;
 
@@ -99,7 +65,7 @@ bool Pose::exportBin(const char *path) {
       i += 1;
     }
   }
-  if (fwrite(&pose, 8, poses, f) != poses) {
+  if (fwrite(&pose, 4 * 8, poses, f) != poses) {
     printf("failed to write poses\n");
     // goto xport_fail;
   }
@@ -130,8 +96,7 @@ bool Pose::exportBin(const char *path) {
       }
 
       // Write Frame Delay
-      uint32_t delay = ff.delay;
-      if (fwrite(&delay, 4, 1, f) != 1) {
+      if (fwrite(&ff.delay, 4, 1, f) != 1) {
         printf("failed to write frame delay\n");
         // goto xport_fail;
       }

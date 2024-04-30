@@ -2,7 +2,7 @@
 #include <common.h>
 #include <llm.hpp>
 
-#include <stdexcept>
+#include <log.hpp>
 
 #define PAINTER "<|ai painter|>"
 #define CLIENT "<|client|>"
@@ -23,7 +23,7 @@ LLM::LLM(const char *model, const char *prompt) {
   model_params.n_gpu_layers = 99;
 
   if (!(llm.model = llama_load_model_from_file(model, model_params)))
-    throw std::runtime_error(std::string(__func__) + ": failed to load model");
+    Log::assert("LLM: Failed to load model");
 
   // initialize the context
   llama_context_params ctx_params = llama_context_default_params();
@@ -33,8 +33,7 @@ LLM::LLM(const char *model, const char *prompt) {
   ctx_params.n_threads = ctx_params.n_threads_batch = get_num_physical_cores();
 
   if (!(llm.ctx = llama_new_context_with_model(llm.model, ctx_params)))
-    throw std::runtime_error(std::string(__func__) +
-                             ": failed to create the llama_context");
+    Log::assert("LLM: Failed to create llama_context");
 
   // Create Batch
   llm.batch = llama_batch_init(512, 0, 1);
@@ -138,7 +137,7 @@ std::string LLM::reply(std::string prompt) {
 
     // evaluate the current batch with the transformer model
     if (llama_decode(llm.ctx, llm.batch))
-      throw std::runtime_error(std::string(__func__) + ": failed to eval");
+      Log::assert("LLM: Failed to eval");
   }
 
   llama_batch_clear(llm.batch);

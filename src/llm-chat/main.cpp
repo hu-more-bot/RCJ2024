@@ -1,3 +1,4 @@
+#include "log.hpp"
 #include <al.hpp>
 #include <llm.hpp>
 #include <stt.hpp>
@@ -16,27 +17,27 @@ char *loadPrompt(const char *path);
 std::vector<std::string> parse(std::string &str);
 
 int main() {
-  printf("Loading LLM...\n");
+  Log::debug("Loading LLM");
   LLM llm(LLM_MODEL, loadPrompt(PROMPT));
 
-  printf("Loading TTS...\n");
+  Log::debug("Loading TTS");
   TTS tts(TTS_MODEL);
   AL al;
 
 #if SPEECH_INPUT
-  printf("Loading STT...\n");
+  Log::debug("Loading STT");
   STT stt(STT_MODEL);
 #endif
 
   // Connect to SD-Server
-  printf("Connecting to SD-Server...\n");
+  Log::debug("Connecting to SD-Server");
   Client sd(8000);
 
   // Connect to PoseSim (not necessary)
-  printf("Connecting to SD-Server...\n");
+  Log::debug("Attempting Connection to Pose-Sim");
   Client poseSim(80001);
 
-  printf("Enterint Main Loop...\n");
+  Log::debug("Entering Main Loop...");
   while (true) {
     // Wait for user input
     printf("User In: \n");
@@ -69,9 +70,14 @@ int main() {
     // Process Commands
     printf("commands: %zu\n", commands.size());
     for (auto c : commands) {
-      // printf("%s\n", c.c_str());
-      sd.send(c);
-      // poseSim.send("idle");
+      char command[8], data[32];
+      printf("%s\n", c.c_str());
+      sscanf(c.c_str(), "%s: %s", command, data);
+
+      if (!strncmp(command, "SEND", 4))
+        sd.send(data);
+      else if (!strncmp(command, "POSE", 4))
+        poseSim.send(data);
     }
 
     // Play Response Audio

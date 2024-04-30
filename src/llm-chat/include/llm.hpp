@@ -20,6 +20,8 @@ private:
 
   bool decode(std::string text);
 
+  std::string m_user, m_ai;
+
   struct {
     llama_model *model{};
     llama_context *ctx{};

@@ -4,6 +4,8 @@
 #include <pico/multicore.h>
 #include <pico/stdio.h>
 
+#include <stdio.h>
+
 // Emergency Relay
 #define EM_RELAY 28
 
@@ -20,7 +22,10 @@ void core1() {
 
   // core1 Loop
   while (1) {
-    // TODO listen for commands
+    int data;
+    scanf("%i", &data);
+
+    multicore_fifo_push_blocking(data);
   }
 }
 
@@ -37,7 +42,7 @@ int main() {
       ;
   }
 
-  // Arm Servos
+  // Arm System
   gpio_init(EM_RELAY);
   gpio_set_dir(EM_RELAY, GPIO_OUT);
   gpio_put(EM_RELAY, true);
@@ -46,16 +51,20 @@ int main() {
   // 0.3, 0.0, 0.2, 1.0}; // right hand
 
   // Init Pose & Base
-  anim_init(0, (anim_t){});
+  anim_init(0, 0);
   base_init(8);
 
+  uint32_t state;
   while (true) {
     anim_set(0);
 
     // Update Arms
     anim_update();
+
+    if (multicore_fifo_rvalid())
+      multicore_fifo_pop_timeout_us(100, &state);
   }
 
-  // Disarm servos
+  // Disarm System
   gpio_put(EM_RELAY, false);
 }

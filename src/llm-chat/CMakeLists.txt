@@ -16,6 +16,8 @@ set(SOURCES
     src/al.cpp
 
     src/client.cpp
+
+    src/log.cpp
 )
 
 # Libraries

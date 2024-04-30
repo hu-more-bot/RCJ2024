@@ -1,3 +1,4 @@
+#include "log.hpp"
 #include <client.hpp>
 
 #include <netdb.h>
@@ -14,12 +15,12 @@ Client::Client(int port, const char *address) {
   struct hostent *server;
 
   if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-    fprintf(stderr, "%s: failed to open socket\n", __func__);
+    Log::error("Socket %i: Failed to open socket", port);
     return;
   }
 
   if ((server = gethostbyname(address)) == NULL) {
-    fprintf(stderr, "%s: no such host\n", __func__);
+    Log::error("Socket %i: No such host", port);
     return;
   }
 
@@ -29,7 +30,7 @@ Client::Client(int port, const char *address) {
         server->h_length);
   serv_addr.sin_port = htons(port);
   if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-    fprintf(stderr, "%s: failed to connect\n", __func__);
+    Log::error("Socket %i: Failed to connect", port);
     return; // TODO autoconnect
   }
 }
@@ -39,5 +40,5 @@ Client::~Client() { close(sockfd); }
 void Client::send(std::string msg) {
   int n = write(sockfd, msg.data(), msg.size());
   if (n != msg.size())
-    fprintf(stderr, "%s: failed to send message\n", __func__);
+    Log::warning("Socket: Failed to send message '%s'", msg.c_str());
 }
