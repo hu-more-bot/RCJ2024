@@ -4,7 +4,8 @@
 #include <pthread.h>
 
 // Borrowed from sd-server/SDServer
-class Server {
+class Server
+{
 public:
   Server(const std::function<void(char *, int)> &callback, int port = 8000);
   ~Server();
@@ -16,8 +17,4 @@ private:
   const std::function<void(char *, int)> m_callback;
 
   int m_port;
-
-  static void *service(void *arg);
-  static void *timeouter(void *arg);
-  static void *accepter(void *arg);
 };
