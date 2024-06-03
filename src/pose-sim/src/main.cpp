@@ -1,4 +1,3 @@
-// #include <Artifex/core/window.hpp>
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 #include <cstring>
@@ -9,34 +8,40 @@
 #include <pose.hpp>
 #include <server.hpp>
 
-// using namespace Artifex;
-
 #define rads(degs) ((degs) * M_PI / 180.0)
 #define degs(rads) ((rads) * 180.0 / M_PI)
 
+#define MIN(a, b) (a < b ? a : b)
+#define MAX(a, b) (a > b ? a : b)
+#define LIMIT(x, min, max) (MIN(MAX(x, min), max))
+#define PERCENT(x) LIMIT(x, 0, 1)
+
 const float armLength[] = {0.3, 0.2};
 
+// Get time in seconds
 float time();
 
+// Draw Robot Skeleton
 void drawSkeleton(pose_t pose);
-
-struct Servo {
-  float value;
-
-  // Smoothing Amount (0 = disable)
-  float smoothing;
-
-  float prev; // prev value (for smoothing)
-} servo[8];
 
 struct {
   float amount = 0.03;
   pose_t value, prev;
 } smooth;
 
-void clbck(char *, int, void *) {}
-
 int main() {
+  // Print App Info
+  printf("Pose Simulator for RCJ2024\nby Team HU-More-Bot\n\n");
+  printf("Controls:\n");
+  printf("- Use the Arrow Keys to rotate the pose\n");
+  printf("- Press 'L' to load a new pose\n");
+  printf("- Press 'S' to save the pose (useless)\n");
+  printf("- Press 'I' to import binary pose\n");
+  printf("- Press 'E' to export binary pose\n");
+  printf("- Press 'P' to activate a pose\n");
+  printf("- Press 'A' to activate an animation\n");
+  printf("- Press 'O' for orbiting camera\n\n");
+
   srand(time(0));
 
   // Create Window
@@ -56,21 +61,10 @@ int main() {
   glEnable(GL_DEPTH_TEST);
   float past, now = time();
 
-  // Print App Info
-  printf("Pose Simulator for RCJ2024\nby Team HU-More-Bot\n\n");
-  printf("Controls:\n");
-  printf("- Use the Arrow Keys to rotate the pose\n");
-  printf("- Press 'L' to load a new pose\n");
-  printf("- Press 'P' to activate a pose\n");
-  printf("- Press 'A' to activate an animation\n");
-  printf("- Press Space to reloads the current pose\n");
-  printf("- Press 'O' for orbiting camera; rotating stops it\n\n");
-
   // Pose Service
   float start = now;
   size_t state = 0;
-  char path[128] = "../template.pose";
-  Pose pose = Pose::load(path);
+  Pose pose = Pose::importBin("../test.bin");
 
   bool anim = false;
   char name[16];
@@ -128,93 +122,99 @@ int main() {
     now = time();
     float deltaTime = now - past;
 
-    // Check Key Inputs
-    if (glfwGetKey(window, GLFW_KEY_SPACE))
-      hasKey = true;
-    else if (hasKey == true) {
-      hasKey = false;
-      pose = Pose::load(path);
-      state = 0;
-    }
-
-    // Load Pose
-    if (glfwGetKey(window, GLFW_KEY_L)) {
-      printf("Enter file name: ");
-      scanf("%s", path);
-
-      pose = Pose::load(path);
-      state = 0, start = now;
-    }
-
-    // Orbiting Camera
-    if (glfwGetKey(window, GLFW_KEY_O)) {
-      orbiting = true;
-    }
-
-    // Activate Pose
-    if (glfwGetKey(window, GLFW_KEY_P)) {
-      char p[16];
-      printf("Enter pose name: ");
-      scanf("%s", p);
-
-      if (!pose.poses.count(p)) {
-        printf("Pose '%s' not found\n", p);
-      } else {
-        strncpy(name, p, 16);
-        anim = false;
-        target = pose.poses[name];
+    /* Process Keys & UI */ {
+      int key = 0;
+      const int keys[] = {GLFW_KEY_L, GLFW_KEY_S, GLFW_KEY_I,
+                          GLFW_KEY_E, GLFW_KEY_P, GLFW_KEY_A};
+      for (auto k : keys) {
+        if (glfwGetKey(window, k)) {
+          key = k;
+          break;
+        }
       }
-    }
 
-    // Activate Animation
-    if (glfwGetKey(window, GLFW_KEY_A)) {
-      char a[16];
-      printf("Enter animation name: ");
-      scanf("%s", a);
+      if (key != 0) {
+        glfwIconifyWindow(window);
 
-      if (!pose.anims.count(a)) {
-        printf("Animation '%s' not found\n", a);
-      } else {
-        strncpy(name, a, 16);
-        anim = true;
+        char path[32];
+        printf("Enter file name: ");
+        scanf("%s", path);
+
+        // process key events
+        switch (key) {
+          // Load Pose
+        case GLFW_KEY_L: {
+          pose = Pose::load(path);
+          state = 0, start = now;
+        } break;
+
+          // Save Pose
+        case GLFW_KEY_S: {
+          pose.save(path);
+        } break;
+
+          // Import Pose
+        case GLFW_KEY_I: {
+          pose = Pose::importBin(path);
+          state = 0, start = now;
+        } break;
+
+          // Export Pose
+        case GLFW_KEY_E: {
+          pose.exportBin(path);
+        } break;
+
+          // Activate Pose
+        case GLFW_KEY_P: {
+          if (!pose.poses.count(path)) {
+            printf("Pose '%s' not found\n", path);
+          } else {
+            strncpy(name, path, 16);
+            anim = false;
+            target = pose.poses[name];
+          }
+        } break;
+
+        // Activate Animation
+        case GLFW_KEY_A: {
+          if (!pose.anims.count(path)) {
+            printf("Animation '%s' not found\n", path);
+          } else {
+            strncpy(name, path, 16);
+            anim = true;
+          }
+        } break;
+        }
+      }
+
+      // Rotate Camera
+      if (glfwGetKey(window, GLFW_KEY_ESCAPE))
+        glfwSetWindowShouldClose(window, false);
+
+      if (glfwGetKey(window, GLFW_KEY_O))
+        orbiting = true;
+
+      if (glfwGetKey(window, GLFW_KEY_UP) && camera[0] > -89) {
+        camera[0] -= 45 * deltaTime;
+      } else if (glfwGetKey(window, GLFW_KEY_DOWN) && camera[0] < 89) {
+        camera[0] += 45 * deltaTime;
+      } else if (glfwGetKey(window, GLFW_KEY_RIGHT)) {
+        camera[1] += 45 * deltaTime;
+        orbiting = false;
+      } else if (glfwGetKey(window, GLFW_KEY_LEFT)) {
+        camera[1] -= 45 * deltaTime;
+        orbiting = false;
+      }
+
+      if (orbiting) {
+        camera[1] += 22.5 * deltaTime;
       }
     }
 
     // Rotate Camera
-    if (glfwGetKey(window, GLFW_KEY_UP) && camera[0] > -89) {
-      camera[0] -= 45 * deltaTime;
-    } else if (glfwGetKey(window, GLFW_KEY_DOWN) && camera[0] < 89) {
-      camera[0] += 45 * deltaTime;
-    } else if (glfwGetKey(window, GLFW_KEY_RIGHT)) {
-      camera[1] += 45 * deltaTime;
-      orbiting = false;
-    } else if (glfwGetKey(window, GLFW_KEY_LEFT)) {
-      camera[1] -= 45 * deltaTime;
-      orbiting = false;
-    }
-
-    if (orbiting) {
-      camera[1] += 22.5 * deltaTime;
-    }
-
     glLoadIdentity();
     glRotatef(camera[0], 1, 0, 0);
     glRotatef(camera[1], 0, 1, 0);
-
-    // if (glfwGetKey(window, GLFW_KEY_Q))
-    //   a += 15 * deltaTime;
-    // if (glfwGetKey(window, GLFW_KEY_A))
-    //   a -= 15 * deltaTime;
-
-    // if (glfwGetKey(window, GLFW_KEY_W))
-    //   b += 15 * deltaTime;
-    // if (glfwGetKey(window, GLFW_KEY_S))
-    //   b -= 15 * deltaTime;
-
-    // if (glfwGetKey(window, GLFW_KEY_E))
-    //   c += 15 * deltaTime;
-    // if (glfwGetKey(window, GLFW_KEY_D))
-    //   c -= 15 * deltaTime;
 
     // Play Animation
     if (anim) {
@@ -238,26 +238,16 @@ int main() {
         const float &v = (j == 0 ? smooth.value.left : smooth.value.right)[i];
         float &prev = (j == 0 ? smooth.prev.left : smooth.prev.right)[i];
 
-        // pwm = low + % * (high-low)
-        // float v = s->min + LIMIT(value, 0.0f, 1.0f) * (s->max - s->min);
-        float value = v;
+        float value = PERCENT(v);
 
         // Set invalid prev
         if (prev == 0)
           prev = value;
 
         // Smooth out movement
-        // pwm = (pwm * s_amount) + (prev * (100% - s_amount))
         value = (value * smooth.amount) + (prev * (1.0 - smooth.amount));
         prev = value;
 
-        // Double-Check Values
-        // if (MAX(s->min, s->max) < value || value < MIN(s->min, s->max))
-        // continue; // invalid value, something went wrong
-        // if (i == 3)
-        // printf("%.2f %.2f\n", s->value, value);
-
-        // servo_setMillis(s->pin, value);
         (j == 0 ? p.left : p.right)[i] = value;
       }
     }
@@ -268,7 +258,6 @@ int main() {
     glfwPollEvents();
   }
 
-  // TODO
   return 0;
 }
 

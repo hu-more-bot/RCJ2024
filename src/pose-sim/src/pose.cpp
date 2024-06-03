@@ -1,6 +1,9 @@
 #include "pose.hpp"
 
+#include <cstdio>
 #include <cstring>
+#include <string>
+#include <unordered_map>
 
 bool Pose::save(const char *path) {
   FILE *f = fopen(path, "w");
@@ -30,6 +33,83 @@ bool Pose::save(const char *path) {
   }
 
   return true;
+}
+
+bool Pose::exportBin(const char *path) {
+  FILE *f = fopen(path, "wb");
+  if (!f)
+    return false;
+
+  std::unordered_map<std::string, uint8_t> ids;
+
+  // Write Magic
+  if (fwrite("ANPO", 1, 4, f) != 4) {
+    printf("failed to write magic\n");
+    // goto xport_fail;
+  }
+
+  // Write Pose Count
+  uint8_t poses = this->poses.size();
+  if (fwrite(&poses, 1, 1, f) != 1) {
+    printf("failed to write pose count\n");
+    // goto xport_fail;
+  }
+
+  // Write Poses
+  uint32_t pose[poses][8];
+  {
+    int i = 0;
+    for (auto [key, p] : this->poses) {
+      memcpy(pose[i], &p, 8 * 4);
+      ids[key] = i;
+      i += 1;
+    }
+  }
+  if (fwrite(&pose, 4 * 8, poses, f) != poses) {
+    printf("failed to write poses\n");
+    // goto xport_fail;
+  }
+
+  // Write Anim Count
+  uint8_t anims = this->anims.size();
+  if (fwrite(&anims, 1, 1, f) != 1) {
+    printf("failed to write anim count\n");
+    // goto xport_fail;
+  }
+
+  // Write Anims
+  for (auto [_, frame] : this->anims) {
+    // Write Frame Count
+    uint8_t frames = frame.size();
+    if (fwrite(&frames, 1, 1, f) != 1) {
+      printf("failed to write frame count\n");
+      // goto xport_fail;
+    }
+
+    // Write Frames
+    for (auto ff : frame) {
+      // Write Frame ID
+      uint8_t id = ids[ff.pose];
+      if (fwrite(&id, 1, 1, f) != 1) {
+        printf("failed to write frame id\n");
+        // goto xport_fail;
+      }
+
+      // Write Frame Delay
+      if (fwrite(&ff.delay, 4, 1, f) != 1) {
+        printf("failed to write frame delay\n");
+        // goto xport_fail;
+      }
+    }
+  }
+
+  fclose(f);
+
+  return true;
+
+xport_fail:
+  fclose(f);
+  return false;
 }
 
 Pose Pose::load(const char *path) {
@@ -160,4 +240,51 @@ Pose Pose::load(const char *path) {
   }
 
   return pose;
+}
+
+Pose Pose::importBin(const char *path) {
+  Pose out;
+
+  FILE *f = fopen(path, "rb");
+  if (!f)
+    return {};
+
+  char magic[4];
+  if (fread(magic, 1, 4, f) != 4 || strncmp(magic, "ANPO", 4)) {
+    printf("Failed to read magic\n");
+    return {};
+  }
+
+  // Read Poses
+  uint8_t poses;
+  fread(&poses, 1, 1, f);
+
+  for (int i = 0; i < poses; i++) {
+    pose_t p;
+    fread(&p, 4, 8, f);
+    out.poses[std::to_string(i)] = p;
+  }
+
+  // Read Anims
+  uint8_t anims;
+  fread(&anims, 1, 1, f);
+
+  for (int i = 0; i < anims; i++) {
+    uint8_t frames;
+    fread(&frames, 1, 1, f);
+
+    for (int j = 0; j < frames; j++) {
+      uint8_t id;
+      fread(&id, 1, 1, f);
+
+      float delay;
+      fread(&delay, 4, 1, f);
+
+      out.anims[std::to_string(i)].push_back({std::to_string(id), delay});
+    }
+  }
+
+  fclose(f);
+
+  return out;
 }

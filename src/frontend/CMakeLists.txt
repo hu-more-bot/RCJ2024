@@ -8,6 +8,8 @@ set(SOURCES
     src/piper.cpp
 
     src/client.cpp
+
+    src/log.cpp
 )
 
 set(LIBRARIES

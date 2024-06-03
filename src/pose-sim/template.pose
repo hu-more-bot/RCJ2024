@@ -6,10 +6,6 @@ pose: null
 - left: 0 0 1 0
 - right: 0 0 1 0
 
-pose: rest
-- left: 0 0.01 0.5 0
-- right: 0.01 0 0.5 0
-
 pose: T
 - left: 1 0 0 0
 - right: 1 0 0 0
@@ -21,6 +17,10 @@ pose: a
 pose: b
 - left: 0 0 1.0 -1
 - right 0 0 1.0 -1
+
+pose: rest
+- left: 0.3 0.0 0.2 0.0
+- right: 0.3 0.0 0.2 0.0
 
 // new animation called idle
 anim: idle
