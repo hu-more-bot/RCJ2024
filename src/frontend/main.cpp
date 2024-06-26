@@ -1,70 +1,141 @@
-#include <al.hpp>
-#include <stt.hpp>
-#include <tts.hpp>
+// #include <client.hpp>
+// #include <stt.hpp>
+// #include <tts.hpp>
 
-#include <client.hpp>
+#include <Artifex/camera.h>
+#include <Artifex/log.h>
+#include <Artifex/renderer.h>
 
-#define SPEECH_INPUT false
+#include <client.h>
+#include <yolo.h>
 
-int main()
-{
-    printf("Loading TTS...\n");
-    TTS tts(getenv("MODEL_PIPER"), "amy");
+// #include <tts.h>
 
-#if SPEECH_INPUT
-    printf("Loading STT...\n");
-    STT stt(getenv("MODEL_WHISPER_BASE"));
-#endif
+#include <math.h>
+#include <stdlib.h>
 
-    auto callback = [&](const Client::Event &event)
-    {
-        if (event.type != Client::Event::MESSAGE)
-            return;
+static float person = 0;
 
-        // TODO
-    };
+#include "image.h"
+#include "render.h"
 
-    printf("Starting Client...\n");
-    Client client(8000, "localhost", callback);
+#include <stt.h>
 
-    while (true)
-    {
-        // Wait for user input
-        printf("User In: \n");
-#if SPEECH_INPUT
-        std::string user_in_s = stt.listen();
-        char user_in[128];
-        printf("Said: '%s'\n", user_in);
-#else
-        char user_in[128];
-        memset(user_in, 0, sizeof(user_in));
-        fgets(user_in, sizeof(user_in), stdin);
-#endif
+int main() {
+  // STT stt("../models/ggml-tiny.en-q5_1.bin");
 
-        if (!strncasecmp(user_in, "exit", 4))
-            break;
+  // while (1) {
+  //   std::string txt = stt.listen();
+  //   printf("%s\n", txt.c_str());
+  // }
 
-        // Handle 0-length responses
-        if (response.size() == 0)
-            response = "One minute please...";
+  // exit(0);
+  // Create Camera
+  axCamera camera;
+  axCameraCreate(&camera, 640, 480, 30);
 
-        // Generate Response Audio
-        auto buf = tts.say(response);
-        al.add(buf, 44100 / 2);
+  // Create YOLO
+  yolo_t yolo;
+  yoloCreate(&yolo, "../models/yolov7-tiny.onnx");
 
-        // Process Commands
-        printf("commands: %zu\n", commands.size());
-        for (auto c : commands)
-        {
-            // printf("%s\n", c.c_str());
-            sd.send(c);
-            // poseSim.send("idle");
+  // tts_t tts;
+  // ttsCreate(&tts, "../models/piper/ryan.onnx");
+
+  stt_t stt;
+  sttCreate(&stt, "../models/ggml-tiny.en-q5_1.bin");
+
+  // Create Client
+  client_t client;
+  clientCreate(&client);
+
+  // Create Windows
+  axWindow wnd_face, wnd_chest;
+  axWindowCreate(&wnd_face, "Face", 720, 480);
+  // axWindowCreate(&wnd_chest, "Chest", 720, 480);
+
+  axRenderer rnd_face, rnd_chest;
+  axRendererCreate(&rnd_face, wnd_face);
+  // axRendererCreate(&rnd_chest, wnd_chest);
+
+  // ---- Load Textures
+
+  // UI Textures (close, link, start, fullscreen, unlink, stop, fullscreen exit)
+  unsigned int texUI[7] = {
+      loadTexture(rnd_face, "../res/ui/close.png"),
+      loadTexture(rnd_face, "../res/ui/link.png"),
+      loadTexture(rnd_face, "../res/ui/start.png"),
+      loadTexture(rnd_face, "../res/ui/fullscreen.png"),
+      loadTexture(rnd_face, "../res/ui/link_off.png"),
+      loadTexture(rnd_face, "../res/ui/stop.png"),
+      loadTexture(rnd_face, "../res/ui/fullscreen_exit.png"),
+  };
+
+  // Face Textures (eye x2, eyebrow x2, mouth)
+  unsigned int texFace[5] = {
+      loadTexture(rnd_face, "../res/pupil.png"),
+      loadTexture(rnd_face, "../res/pupil.png"),
+      loadTexture(rnd_face, "../res/eyebrow_fancy_left.png"),
+      loadTexture(rnd_face, "../res/eyebrow_fancy_right.png"),
+      loadTexture(rnd_face, "../res/mouth_monster.png"),
+  };
+
+  ax_verbose("main", "initialization done");
+
+  while (axWindowUpdate(wnd_face)) { // && axWindowUpdate(wnd_chest)) {
+    /* Update Windows */ {
+      static int fullscreenButtonDown[2];
+
+      axRendererUpdate(rnd_face);
+      // axRendererUpdate(rnd_chest);
+      axRendererClear(rnd_face, (axColor){1, 1, 1});
+      // axRendererClear(rnd_chest, (axColor){});
+
+      // Exit on [ESC]
+      if (axWindowGetKeyState(wnd_face, AX_WINDOW_KEY_ESCAPE))
+        //  || axWindowGetKeyState(wnd_chest, AX_WINDOW_KEY_ESCAPE))
+        axWindowExit(wnd_face); //, axWindowExit(wnd_chest);
+
+      // Make Windows Fullscreen
+      if (axWindowGetKeyState(wnd_face, AX_WINDOW_KEY_F)) {
+        if (!fullscreenButtonDown[0]) {
+          fullscreenButtonDown[0] = 1;
+          axWindowSetFullscreen(wnd_face, !axWindowIsFullscreen(wnd_face), 0);
         }
+      } else
+        fullscreenButtonDown[0] = 0;
 
-        // Play Response Audio
-        al.play(0);
-        al.remove(0);
+      // if (axWindowGetKeyState(wnd_chest, AX_WINDOW_KEY_F)) {
+      //   if (!fullscreenButtonDown[1]) {
+      //     fullscreenButtonDown[1] = 1;
+      //     axWindowSetFullscreen(wnd_chest, !axWindowIsFullscreen(wnd_chest),
+      //     0);
+      //   }
+      // } else
+      //   fullscreenButtonDown[1] = 0;
     }
 
-    return 0;
+    renderFace(rnd_face, texFace, person, 1.1f);
+    renderUI(wnd_face, rnd_face, texUI, client, camera, yolo);
+    // renderLoading(rnd_face, 1);
+  }
+
+  ax_verbose("main", "stopped, cleaning up");
+
+  // Clean Up Windows
+  axRendererDestroy(&rnd_face);
+  // axRendererDestroy(&rnd_chest);
+
+  axWindowDestroy(&wnd_face);
+  // axWindowDestroy(&wnd_chest);
+
+  // Clean Up Client
+  clientDestroy(&client);
+
+  // Clean Up YOLO & Camera
+  yoloDestroy(&yolo);
+  axCameraDestroy(&camera);
+
+  ax_verbose("main", "cleanup done, exiting");
+
+  return 0;
 }

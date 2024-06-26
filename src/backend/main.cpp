@@ -1,93 +1,73 @@
-#include <server.hpp>
+#include <server.h>
 
 #include <llm.hpp>
 #include <sd.hpp>
 
-int main()
-{
-    printf("Loading LLM...\n");
-    LLM llm(getenv("MODEL_ZEPHYR_7B_BETA"), "../prompt.txt");
+#include <Artifex/log.h>
 
-    printf("Loading SD...\n");
-    SD sd(getenv("MODEL_SD"));
-    std::thread painter; // image generator thread
+#include <list>
+#include <thread>
 
-    auto callback = [&](Server &server, const Server::Event &event)
-    {
-        if (event.type != Server::Event::MESSAGE)
-            return;
+#include "callback.hpp"
 
-        if (!strncmp(event.data, "TXIN", 4))
-        {
-            // Decode Message & Generate Response
-            llm.decode("client", std::string(event.data + 4, event.len));
-        }
-        else if (!strncmp(event.data, "IMTX", 4))
-        {
-            // Generate Image from prompt
+int main() {
+  LLM llm("../models/zephyr-7b-beta.gguf", "../prompt.txt");
+  ax_verbose("main", "loaded llm");
 
-            struct
-            {
-                int width;
-                int height;
-                char *prompt;
-            } msg;
+  SD sd("../models/sd.gguf");
+  ax_verbose("main", "loaded sd");
 
-            memcpy(&msg, event.data + 4, sizeof(int) * 2);
-            msg.prompt = event.data + 4 + sizeof(int) * 2;
+  std::thread painter; // image generator thread
 
-            // Start Painter Thread
-            painter = (std::thread)[&]
-            {
-                sd.config.width = msg.width;
-                sd.config.height = msg.height;
-                sd.config.seed = time(0);
+  server_t server;
+  serverCreate(&server, 8000);
 
-                strcpy(sd.config.prompt, msg.prompt);
+  ax_verbose("main", "initialization done");
 
-                if (!sd.generate())
-                {
-                    printf("failed to generate image\n");
-                }
+  std::list<std::string> pool;
 
-                // TODO compress & send image
-                // format: "IM[ch][size][IMAGE DATA]"
-                char out[2 + sizeof(int) * 3 + sd.result->channel * sd.result->width * sd.result->height];
-                memcpy(out, "IM", 2);
-                memcpy(out + 2, &sd.result->channel, sizeof(int));
-                memcpy(out + 2 + sizeof(int), &sd.result->width, sizeof(int));
-                memcpy(out + 2 + sizeof(int) * 2, &sd.result->height, sizeof(int));
+  serverStart(server, servercb, NULL);
 
-                server.send(event.sockfd, out);
-            };
-        }
-        else if (!strncmp(event.data, "IMIN", 4))
-        {
-            // Generate Image from prompt using image
-        }
-    };
+  while (true) {
+    // Get User In
+    printf("You:\n\e[0;92m");
+    char text[256];
+    memset(text, 0, sizeof(text));
+    fgets(text, sizeof(text), stdin);
+    printf("\e[39m");
 
-    printf("Starting Server...\n");
-    Server server(8000, callback);
+    llm.decode("client", std::string(text));
 
-    while (true)
-    {
-        // Get User In
-        printf("You:\n\e[0;92m");
-        char text[256];
-        memset(text, 0, sizeof(text));
-        fgets(text, sizeof(text), stdin);
-        printf("\e[39m");
+    // Print AI Out
+    std::vector<std::string> response(1, "");
+    size_t cursor = 0;
 
-        llm.decode("client", std::string(text));
+    std::string out = "", cmd;
+    bool open = false;
+    llm.generate([&](std::string token) {
+      if (open) {
+        if (token == "]") { // close
+          open = false;
 
-        // Print AI Out
-        printf("AI:\n\e[0;36m");
+          printf("command: `%s`\n", cmd.c_str());
 
-        llm.generate([&](std::string token)
-                     { printf("%s", token.c_str());
-                     fflush(stdout); });
+          // TODO process command
+        } else
+          cmd += token;
+      } else {
+        if (token == "[") { // open
+          open = true;
+          cmd = "";
 
-        printf("\e[39m");
-    }
+          if (!response[cursor].empty()) {
+            response.push_back("");
+            cursor++;
+          }
+        } else
+          response[cursor] += token;
+      }
+    });
+
+    printf("response: %zu", cursor + 1);
+  }
 }

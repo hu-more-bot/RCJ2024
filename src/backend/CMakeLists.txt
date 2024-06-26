@@ -5,10 +5,10 @@ set(SOURCES
     main.cpp
 
     # AI
-    src/llm.cpp
-    src/sd.cpp
+    lib/src/llm.cpp
+    lib/src/sd.cpp
   
-    src/server.cpp
+    lib/src/server.c
 )
 
 # Libraries
@@ -19,14 +19,16 @@ set(LIBRARIES
     stable-diffusion
     
     ggml
+
+    axCommon # for logging
 )
 
-# Project
-project(backend VERSION 0.1.0 LANGUAGES C CXX)
+project(backend)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_link_libraries(${PROJECT_NAME} ${LIBRARIES})
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/lib/include)
 
 add_subdirectory(external)
