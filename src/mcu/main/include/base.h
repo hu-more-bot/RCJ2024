@@ -8,14 +8,6 @@ void base_init(int startPin);
 // Step Motors
 void base_step(int left, int right);
 
-// B-: green
-// B+: yellow
-
-// A-: red
-// A+: blue
-
-// TODO measure coil inductance
-
 /*
 
 int PUL=7; //define Pulse pin

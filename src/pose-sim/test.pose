@@ -6,10 +6,17 @@ pose: T
 - left: 1 0 0 0
 - right: 1 2 0 0
 
+
+
+pose: a
+- left: 1 1 1 1
+- right: 1 1 1 1
+
 // new animation called idle
 anim: idle
 
 // set frames `num: {left} {right} delay`
 - frames:
 1: rest 3
-2: T 2
+2: a 2
+3: T 0.5

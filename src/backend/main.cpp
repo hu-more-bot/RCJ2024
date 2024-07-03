@@ -12,10 +12,10 @@
 
 int main() {
   LLM llm("../models/zephyr-7b-beta.gguf", "../prompt.txt");
-  ax_verbose("main", "loaded llm");
+  ax_debug("main", "loaded llm");
 
   SD sd("../models/sd.gguf");
-  ax_verbose("main", "loaded sd");
+  ax_debug("main", "loaded sd");
 
   std::thread painter; // image generator thread
 

@@ -8,7 +8,6 @@
 
 // Load Texture from File
 unsigned int loadTexture(axRenderer renderer, const char *path) {
-  stbi_set_flip_vertically_on_load(1);
   int w, h, ch;
   unsigned char *data = stbi_load(path, &w, &h, &ch, 4);
 
@@ -57,7 +56,7 @@ void cropImage(unsigned char *data, int width, int height,
       unsigned long index = (y * newWidth + x) * 3;
       unsigned long originIndex = (originY * width + originX) * 3;
 
-      // Set Pixels
+      // Set Pixel
       if (originX < 0 || originY < 0 || originX >= width || originY >= height)
         memset(newData + index, 0, 3);
       else

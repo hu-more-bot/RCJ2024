@@ -1,11 +1,8 @@
 #pragma once
 
-#include <Artifex/camera.h>
-#include <Artifex/clock.h>
-#include <Artifex/renderer.h>
+#include <session.h>
 
-#include <client.h>
-#include <yolo.h>
+#include <Artifex/clock.h>
 
 #include <math.h>
 
@@ -50,13 +47,13 @@ void renderFace(axRenderer renderer, unsigned int textures[4], float lookat,
   drawInfo.texture = textures[4];
   drawInfo.center = (axVector){0.0f, -0.3f};
   drawInfo.size = (axVector){0.3f * 4, 0.3f};
-  drawInfo.rotation = 5.0f * sin(axClockNow());
+  drawInfo.rotation = 500.0f * axClockNow();
   axRendererDraw(renderer, &drawInfo);
 }
 
 // Process & Render UI
 void renderUI(axWindow window, axRenderer renderer, unsigned int textures[7],
-              client_t client, axCamera camera, yolo_t yolo) {
+              struct Session *session) {
   static int prevState = 0;
   static float state = 0;
   static int touchState = 0;
@@ -99,7 +96,7 @@ void renderUI(axWindow window, axRenderer renderer, unsigned int textures[7],
   struct axRendererDrawInfo drawInfo = {};
   drawInfo.style = 1;
   drawInfo.color = (axColor){0.2f, 0.2f, 0.2f};
-  drawInfo.corner[0] = drawInfo.corner[2] = 0.2f;
+  drawInfo.corner[0] = drawInfo.corner[1] = 0.2f;
   drawInfo.size.x = 1.0f;
   drawInfo.size.y = 0.5f;
   drawInfo.center.y = (2.75f) / axWindowRatio(window) - state;
@@ -123,7 +120,7 @@ void renderUI(axWindow window, axRenderer renderer, unsigned int textures[7],
     // axRendererDraw(renderer, &drawInfo);
 
     static int buttonState[4] = {};
-    buttonState[1] = clientIsConnected(client);
+    buttonState[1] = clientIsConnected(session->client);
     buttonState[2] = 0;
     buttonState[3] = axWindowIsFullscreen(window);
 
@@ -139,39 +136,45 @@ void renderUI(axWindow window, axRenderer renderer, unsigned int textures[7],
         if (drawInfo.center.y - drawInfo.size.y < cursor.y &&
             cursor.y < drawInfo.center.y + drawInfo.size.y) {
           switch (x) {
-          case 0:
+          case 0: {
             axWindowExit(window);
-            break;
-          case 1:
+          } break;
+
+          case 1: {
             if (!buttonState[1])
-              clientOpen(client, ADDR, PORT);
+              clientOpen(session->client, ADDR, PORT);
             else
-              clientClose(client);
-            break;
-          case 2:
+              clientClose(session->client);
+          } break;
+
+          case 2: {
             if (!isRunning) {
               // Start Streams
-              if (clientStartListening(client, clientcb, NULL))
+              if (clientStartListening(session->client, clientcb, NULL))
                 break;
 
               // TODO start audio stream
-              if (axCameraStart(camera, framecb, yolo)) {
-                clientStopListening(client);
+              if (axCameraStart(session->camera, framecb, session)) {
+                clientStopListening(session->client);
                 break;
               }
 
               isRunning = 1;
             } else {
               // Stop Streams
-              axCameraStop(camera);
+              axCameraStop(session->camera);
               // TODO stop audio stream
-              clientStopListening(client);
+              clientStopListening(session->client);
 
               isRunning = 0;
             }
-            break;
-          case 3:
-            axWindowSetFullscreen(window, !axWindowIsFullscreen(window), 0);
+          } break;
+
+          case 3: {
+            int F = axWindowIsFullscreen(window);
+            axWindowSetFullscreen(session->window[1], !F, 0);
+            axWindowSetFullscreen(session->window[0], !F, 0);
+          } break;
           }
         }
       }
@@ -198,4 +201,35 @@ void renderLoading(axRenderer renderer, int enable) {
     axRendererDraw(renderer, &drawInfo);
   }
   prev = val;
+}
+
+// do not confuse with windows update
+int updateWindows(struct Session *session) {
+  int exit =
+      axWindowUpdate(session->window[0]) && axWindowUpdate(session->window[1]);
+
+  static int fullscreenButtonDown[2];
+
+  axRendererUpdate(session->renderer[0]);
+  axRendererUpdate(session->renderer[1]);
+  axRendererClear(session->renderer[0], (axColor){1, 1, 1});
+  axRendererClear(session->renderer[1], (axColor){});
+
+  // Exit on [ESC]
+  if (axWindowGetKeyState(session->window[0], AX_WINDOW_KEY_ESCAPE) ||
+      axWindowGetKeyState(session->window[1], AX_WINDOW_KEY_ESCAPE))
+    axWindowExit(session->window[0]), axWindowExit(session->window[1]);
+
+  // Make Windows Fullscreen
+  if (axWindowGetKeyState(session->window[0], AX_WINDOW_KEY_F)) {
+    if (!fullscreenButtonDown[0]) {
+      fullscreenButtonDown[0] = 1;
+      int F = axWindowIsFullscreen(session->window[0]);
+      axWindowSetFullscreen(session->window[1], !F, 0);
+      axWindowSetFullscreen(session->window[0], !F, 0);
+    }
+  } else
+    fullscreenButtonDown[0] = 0;
+
+  return exit;
 }

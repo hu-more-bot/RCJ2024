@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 // Global Start Pin
-int m_startPin; // en pul dir x2
+int m_startPin; // en dir pul x2
 bool isInit = false;
 
 void base_init(int startPin) {
@@ -17,8 +17,8 @@ void base_init(int startPin) {
 
   for (int i = 0; i < 2; i++) {
     gpio_set_dir(startPin + i * 3 + 0, GPIO_OUT); // en
-    gpio_set_dir(startPin + i * 3 + 1, GPIO_OUT); // pul
-    gpio_set_dir(startPin + i * 3 + 2, GPIO_OUT); // dir
+    gpio_set_dir(startPin + i * 3 + 1, GPIO_OUT); // dir
+    gpio_set_dir(startPin + i * 3 + 2, GPIO_OUT); // pul
 
     gpio_put(startPin + i * 3 + 0, false);
   }
@@ -32,22 +32,22 @@ void base_step(int left, int right) {
   gpio_put(m_startPin + 3, right != 0);
 
   // Set Dir
-  gpio_put(m_startPin + 2, left > 0);
-  gpio_put(m_startPin + 5, right > 0);
+  gpio_put(m_startPin + 1, left > 0);
+  gpio_put(m_startPin + 4, right > 0);
 
   // Step Motors
   for (int i = 0; i < MAX(abs(left), abs(right)); i++) {
     // Pulse
     if (abs(left) > i)
-      gpio_put(m_startPin + 1, true);
+      gpio_put(m_startPin + 2, true);
 
     if (abs(right) > i)
-      gpio_put(m_startPin + 4, true);
+      gpio_put(m_startPin + 5, true);
 
     sleep_us(50);
 
-    gpio_put(m_startPin + 1, false);
-    gpio_put(m_startPin + 4, false);
+    gpio_put(m_startPin + 2, false);
+    gpio_put(m_startPin + 5, false);
 
     sleep_us(50);
   }

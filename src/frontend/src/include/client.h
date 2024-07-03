@@ -41,7 +41,7 @@ int clientOpen(client_t client, const char *address, int port);
 void clientClose(client_t client);
 
 // Send Message
-int clientSend(client_t client, const char *message);
+int clientSend(client_t client, const char *message, unsigned long len);
 
 // Start Listening
 int clientStartListening(client_t client, clientCallback cb, void *user_ptr);

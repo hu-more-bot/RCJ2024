@@ -2,23 +2,25 @@
 
 #include <pose.h>
 
-#include <math.h>
+#include <stdint.h>
 
 // Animation
 typedef struct {
-  size_t poses;
+  uint8_t poses;
   pose_t *pose;
 
-  size_t frames;
-  size_t *frame;
-  float *delay;
+  uint8_t frames;
+  struct frame_t {
+    uint8_t pose;
+    float delay;
+  } *frame;
 } anim_t;
 
 // Initialize Pose & Animations
 int anim_init(int startPin, anim_t *anim);
 
 // Set Animation
-void anim_set(size_t id);
+void anim_set(uint8_t id);
 
 // Play Animation
 void anim_update();
