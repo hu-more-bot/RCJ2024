@@ -114,9 +114,9 @@ void clientClose(client_t client) {
   ax_verbose(TAG, "closed");
 }
 
-int clientSend(client_t client, const char *message) {
-  int n = write(client->sockfd, message, strlen(message));
-  if (n != strlen(message)) {
+int clientSend(client_t client, const char *message, unsigned long len) {
+  int n = write(client->sockfd, message, len);
+  if (n != len) {
     ax_error(TAG, "failed to send message");
     return 1;
   }

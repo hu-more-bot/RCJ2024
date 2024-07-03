@@ -16,21 +16,21 @@ extern "C" {
 #include <Artifex/window.h>
 
 // Artifex Renderer Type
-typedef struct axRenderer_ *axRenderer;
+typedef struct axRenderer_* axRenderer;
 
 // Artifex Mesh Type
 struct axMesh {
-  unsigned int VAO, VBO, EBO;
+    unsigned int VAO, VBO, EBO;
 };
 
 // Check if Renderer is valid
 int axRendererIsValid(axRenderer renderer);
 
 // Create Renderer
-int axRendererCreate(axRenderer *renderer, axWindow window);
+int axRendererCreate(axRenderer* renderer, axWindow window);
 
 // Destroy Renderer
-void axRendererDestroy(axRenderer *renderer);
+void axRendererDestroy(axRenderer* renderer);
 
 // Update Renderer
 void axRendererUpdate(axRenderer renderer);
@@ -39,17 +39,16 @@ void axRendererUpdate(axRenderer renderer);
 void axRendererClear(axRenderer renderer, axColor color);
 
 // Load Shader
-unsigned int axRendererLoadShader(axRenderer renderer, const char *vertex,
-                                  const char *fragment, const char *geometry);
+unsigned int axRendererLoadShader(axRenderer renderer, const char* vertex, const char* fragment, const char* geometry);
 
 // Load Texture
-unsigned int axRendererLoadTexture(axRenderer renderer, int width, int height,
-                                   int channels, const unsigned char *data);
+unsigned int axRendererLoadTexture(axRenderer renderer, int width, int height, int channels, const unsigned char* data);
 
 // Load Mesh
-struct axMesh axRendererLoadMesh(axRenderer renderer, const axVector *vertices,
-                                 long v_size, const unsigned int *indices,
-                                 long i_size);
+struct axMesh axRendererLoadMesh(axRenderer renderer, const axVector* vertices, long v_size, const unsigned int* indices, long i_size);
+
+// Update Texture Data
+unsigned int axRendererUpdateTexture(axRenderer renderer, unsigned int texture, int xoffset, int yoffset, int width, int height, int channels, const unsigned char* data);
 
 // Unload Shader
 void axRendererUnloadShader(axRenderer renderer, unsigned int shader);
@@ -62,33 +61,33 @@ void axRendererUnloadMesh(axRenderer renderer, struct axMesh mesh);
 
 // Draw Info
 struct axRendererDrawInfo {
-  // Center & Size of Box
-  axVector center, size;
+    // Center & Size of Box
+    axVector center, size;
 
-  // Rotation of box
-  float rotation;
+    // Rotation of box
+    float rotation;
 
-  // Amount of corner-rounding (top-left, top-right, bottom-left, bottom-right)
-  float corner[4];
+    // Amount of corner-rounding (top-left, top-right, bottom-left, bottom-right)
+    float corner[4];
 
-  // Color of rect
-  axColor color;
+    // Color of rect
+    axColor color;
 
-  // Texture of rect
-  unsigned int texture;
+    // Texture of rect
+    unsigned int texture;
 
-  //    enum {
-  //        AX_RENDERER_DYNAMIC,
-  //        AX_RENDERER_COLOR,
-  //        AX_RENDERER_TEXTURE
-  //    } style;
+    //    enum {
+    //        AX_RENDERER_DYNAMIC,
+    //        AX_RENDERER_COLOR,
+    //        AX_RENDERER_TEXTURE
+    //    } style;
 
-  // Style of rect (0: dynamic, 1: color, 2: texture)
-  int style;
+    // Style of rect (0: dynamic, 1: color, 2: texture)
+    int style;
 };
 
 // Draw
-void axRendererDraw(axRenderer renderer, struct axRendererDrawInfo *drawInfo);
+void axRendererDraw(axRenderer renderer, struct axRendererDrawInfo* drawInfo);
 
 // Check for OpenGL Errors
 int axRendererCheckErrors();

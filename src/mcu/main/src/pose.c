@@ -1,5 +1,3 @@
-#pragma once
-
 #include <pose.h>
 #include <servo.h>
 

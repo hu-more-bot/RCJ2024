@@ -21,6 +21,8 @@ add_compile_options(-Wall
 )
 
 # Sources
+add_subdirectory(no-OS-FatFS-SD-SPI-RPi-Pico/FatFs_SPI)
+
 add_subdirectory(main)
 add_subdirectory(dyn_test)
 add_subdirectory(lib)
