@@ -47,7 +47,7 @@ void renderFace(axRenderer renderer, unsigned int textures[4], float lookat,
   drawInfo.texture = textures[4];
   drawInfo.center = (axVector){0.0f, -0.3f};
   drawInfo.size = (axVector){0.3f * 4, 0.3f};
-  drawInfo.rotation = 500.0f * axClockNow();
+  drawInfo.rotation = sin(axClockNow()) * 5;
   axRendererDraw(renderer, &drawInfo);
 }
 

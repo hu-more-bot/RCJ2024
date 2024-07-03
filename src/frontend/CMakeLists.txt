@@ -8,6 +8,8 @@ set(SOURCES
 )
 
 set(LIBRARIES
+    m
+
     onnxruntime
 
     axCamera

@@ -114,15 +114,14 @@ void clientcb(const struct clientEvent *event, void *user_ptr) {
     if (!strncmp("IMREQ", event->data, 5)) {
       session->image.request = 1; // request image
       ax_debug("main", "image request set");
-    } else if (!strncmp("IMGIN", event->data, 5)) {
-      const char id[5] = "IMGIN";
-
+    } else if (!strncmp("IMAGE", event->data, 5)) {
       memcpy(&session->image.width, &event->data[5], 2);
       memcpy(&session->image.height, &event->data[7], 2);
       memcpy(&session->image.channels, &event->data[9], 1);
 
       unsigned long size = session->image.width * session->image.height *
                            session->image.channels;
+
       if (event->len != 5 + 2 + 2 + 1 + size) {
         ax_warning("main", "incorrect message size");
         break;

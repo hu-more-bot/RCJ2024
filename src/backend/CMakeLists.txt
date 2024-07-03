@@ -5,10 +5,10 @@ set(SOURCES
     main.cpp
 
     # AI
-    lib/src/llm.cpp
-    lib/src/sd.cpp
+    src/llm.cpp
+    src/sd.cpp
   
-    lib/src/server.c
+    src/server.c
 )
 
 # Libraries
@@ -28,7 +28,6 @@ project(backend)
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_link_libraries(${PROJECT_NAME} ${LIBRARIES})
 
-target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/lib/include)
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/include)
 
 add_subdirectory(external)

@@ -29,7 +29,7 @@ public:
          std::function<void(Server &server, const Event &event)> callback);
   ~Server();
 
-  void send(int sockfd, std::string message);
+  void send(int sockfd, void *data, unsigned long size);
 
 private:
   int sockfd;

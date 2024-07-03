@@ -139,13 +139,13 @@ Server::~Server() {
   close(sockfd);
 }
 
-void Server::send(int sockfd, std::string msg) {
+void Server::send(int sockfd, void *data, unsigned long size) {
   if (sockfd < 0) {
     for (auto [s, _] : clients)
-      send(s, msg);
+      send(s, data, size);
   } else {
-    int n = write(sockfd, msg.data(), msg.size());
-    if (n != msg.size())
+    int n = write(sockfd, data, size);
+    if (n != size)
       fprintf(stderr, "%s: failed to send message\n", __func__);
   }
 }
