@@ -1,19 +1,16 @@
 #pragma once
 
 #include <functional>
+#include <set>
 #include <string>
 #include <thread>
-#include <set>
 
 // Simple Linux TCP Server
-class Server
-{
+class Server {
 public:
-  struct Event
-  {
+  struct Event {
     // Event Types
-    enum
-    {
+    enum {
       CONNECTION,
       DISCONNECTION,
       TIMEOUT,
@@ -28,7 +25,8 @@ public:
     size_t len;
   };
 
-  Server(int port, std::function<void(Server &server, const Event &event)> callback);
+  Server(int port,
+         std::function<void(Server &server, const Event &event)> callback);
   ~Server();
 
   void send(int sockfd, std::string message);

@@ -4,8 +4,7 @@
 
 #include <string>
 
-class SD
-{
+class SD {
 public:
   SD(const char *model);
   ~SD();
@@ -16,8 +15,7 @@ public:
   bool show = false;
   sd_image_t *result = NULL;
 
-  struct
-  {
+  struct {
     char prompt[128] = "";
     char negative_prompt[128] = "";
 
