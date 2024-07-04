@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include "Artifex/log.h"
+#include "client.h"
 #include "image.h"
 
 #define MIN(a, b) (a < b ? a : b)
@@ -79,26 +80,32 @@ void framecb(struct axCameraFrame *frame, void *user_ptr) {
     }
   }
 
-  // TODO if has person & im req; crop & save im
+  // if haz person, send pos & cropped
   if (id >= 0) {
-    // set relative position
-    session->person =
+    // set & send relative position
+    const char id[6] = "PERSON";
+    float person = session->person =
         PERCENT((pos[0] + size[0] / 2.0f) / frame->width) * -2.0f + 1;
 
-    const char id[5] = "IMGIN";
-    uint16_t width = IM_RES_W, height = IM_RES_H;
-    uint8_t channels = 3;
-    unsigned char cropped[IM_RES_W * IM_RES_H * 3];
+    clientSend(session->client, id, 6 + 2);
 
-    // crop image
-    cropImage(frame->data, frame->width, frame->height, cropped, IM_RES_W,
-              IM_RES_H, pos[0] + size[0] / 2.0f, 320);
+    // Send Image (if required)
+    if (session->image.request) {
+      const char id[5] = "IMAGE";
+      uint16_t width = IM_RES_W, height = IM_RES_H;
+      uint8_t channels = 3;
+      unsigned char cropped[IM_RES_W * IM_RES_H * 3];
 
-    // send image data [id, w, h, ch, data]
-    clientSend(session->client, (char *)&width,
-               5 + 2 + 2 + 1 + IM_RES_W * IM_RES_H * 3);
+      // crop image
+      cropImage(frame->data, frame->width, frame->height, cropped, IM_RES_W,
+                IM_RES_H, pos[0] + size[0] / 2.0f, 320);
 
-    session->image.request = 0;
+      // send image data [id, w, h, ch, data]
+      clientSend(session->client, (char *)&id,
+                 5 + 2 + 2 + 1 + IM_RES_W * IM_RES_H * 3);
+
+      session->image.request = 0;
+    }
   }
 
   free(result);

@@ -1,6 +1,7 @@
 #include <Artifex/clock.h>
 #include <Artifex/log.h>
 
+#include <serial.hpp>
 #include <server.hpp>
 
 #include <llm.hpp>
@@ -24,6 +25,9 @@ int main() {
   SD sd("../models/sd.gguf");
   ax_verbose("main", "initialization done");
 
+  Serial serial;
+
+  // Image Queue
   std::queue<Image *> image;
 
   // Start Server
@@ -53,17 +57,14 @@ int main() {
         img->data = new unsigned char[size];
         memcpy(img->data, &event.data[10], size);
 
-        // queue.image.push(img);
+        image.push(img);
       } else if (!strncmp(event.data, "PERSON", 6)) {
         if (event.len != 6 + 2) {
           ax_warning("main", "incorrect message size");
           break;
         }
 
-        float person;
-        memcpy(&person, &event.data[7], 2);
-        // TODO person position
-        // TODO forward to pico
+        serial.send(event.data, event.len);
       }
     } break;
 
@@ -88,10 +89,11 @@ int main() {
       unsigned char data[width * height * channels];
 
       server.send(-1, (void *)id, 5 + 2 + 2 + 1 + width * height * channels);
-    }
+    } else
+      sleep(0.3f);
   });
-
   ax_debug("main", "started painter");
+
 
   while (true) {
     // Get User In
@@ -102,10 +104,12 @@ int main() {
     printf("\e[39m");
 
     // Generate Response
-    llm.decode("client", text);
-    std::string out = llm.generate([&](std::string token) {});
     printf("AI:\n\e[0;94m");
-    printf("%s\n", out.c_str());
+    llm.decode("client", text);
+    llm.generate([&](std::string token) {
+      printf("%s", token.c_str());
+      fflush(stdout);
+    });
     printf("\e[0;39m");
   }
 }

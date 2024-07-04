@@ -1,5 +1,6 @@
 #include <session.h>
 
+#include "Artifex/renderer.h"
 #include "callbacks.h"
 #include "image.h"
 #include "render.h"
@@ -51,10 +52,20 @@ int main() {
 
   int imageRefreshNeeded = 0;
   while (updateWindows(&session)) {
+    // Refresh Image
     if (session.image.refresh == 1) {
       session.image.refresh = 0;
 
-      // TODO refresh image
+      if (image == 0) {
+        axRendererLoadTexture(session.renderer[1], session.image.width,
+                              session.image.height, session.image.channels,
+                              session.image.data);
+        break;
+      }
+
+      axRendererUpdateTexture(session.renderer[1], image, 0, 0,
+                              session.image.width, session.image.height,
+                              session.image.channels, session.image.data);
     }
 
     // Render Face UI

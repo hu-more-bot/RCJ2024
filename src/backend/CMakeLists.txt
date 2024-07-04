@@ -8,7 +8,8 @@ set(SOURCES
     src/llm.cpp
     src/sd.cpp
   
-    src/server.c
+    src/server.cpp
+    src/serial.cpp
 )
 
 # Libraries

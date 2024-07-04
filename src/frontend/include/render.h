@@ -148,26 +148,26 @@ void renderUI(axWindow window, axRenderer renderer, unsigned int textures[7],
           } break;
 
           case 2: {
-            if (!isRunning) {
-              // Start Streams
-              if (clientStartListening(session->client, clientcb, NULL))
-                break;
+            // if (!isRunning) {
+            //   // Start Streams
+            //   if (clientStartListening(session->client, clientcb, NULL))
+            //     break;
 
-              // TODO start audio stream
-              if (axCameraStart(session->camera, framecb, session)) {
-                clientStopListening(session->client);
-                break;
-              }
+            //   // TODO start audio stream
+            //   if (axCameraStart(session->camera, framecb, session)) {
+            //     clientStopListening(session->client);
+            //     break;
+            //   }
 
-              isRunning = 1;
-            } else {
-              // Stop Streams
-              axCameraStop(session->camera);
-              // TODO stop audio stream
-              clientStopListening(session->client);
+            //   isRunning = 1;
+            // } else {
+            //   // Stop Streams
+            //   axCameraStop(session->camera);
+            //   // TODO stop audio stream
+            //   clientStopListening(session->client);
 
-              isRunning = 0;
-            }
+            //   isRunning = 0;
+            // }
           } break;
 
           case 3: {

@@ -115,13 +115,18 @@ void clientClose(client_t client) {
 }
 
 int clientSend(client_t client, const char *message, unsigned long len) {
+  if (!clientIsOK(client) || !clientIsConnected(client)) {
+    ax_error(TAG, "invalid client");
+    return 1;
+  }
+
   int n = write(client->sockfd, message, len);
   if (n != len) {
     ax_error(TAG, "failed to send message");
     return 1;
   }
 
-  ax_verbose(TAG, "sent message '%s'", message);
+  // ax_verbose(TAG, "sent message '%s'", message);
   return 0;
 }
 

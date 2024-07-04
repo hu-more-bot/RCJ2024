@@ -11,11 +11,6 @@
 #include <anim.h>
 #include <base.h>
 
-// SD Card
-#include "config.h"
-#include "ff.h"
-#include "sd_card.h"
-
 // PicoSDK
 #include <pico/multicore.h>
 #include <pico/stdio.h>
@@ -37,7 +32,6 @@
 float person = 0;
 
 void blink(int pin);
-anim_t *loadAim(const char *path);
 
 void core1() {
   // Wait for core0
@@ -74,14 +68,6 @@ int main() {
       blink(LED);
   }
 
-  // Init SD
-  sd_init_driver();
-  FATFS fs;
-  if (f_mount(&fs, "0:", 1) != FR_OK) {
-    while (1)
-      blink(LED);
-  }
-
   // Arm System
   gpio_init(RELAY);
   gpio_set_dir(RELAY, GPIO_OUT);
@@ -112,10 +98,36 @@ int main() {
   pose_init(SERVO);
   // base_init(STEPPER);
 
+  gpio_init(8);
+  gpio_init(9);
+  gpio_init(10);
+
+  gpio_set_dir(8, GPIO_OUT);
+  gpio_set_dir(9, GPIO_OUT);
+  gpio_set_dir(10, GPIO_OUT);
+
   // uint32_t state;
   while (true) {
     pose_set(pose_rest);
     pose_update();
+
+    // Enable / Disable
+    gpio_put(8, 0);
+
+    // Set Dir
+    gpio_put(9, 0);
+
+    // Step Motors
+    for (int i = 0; i < 3200; i++) {
+      // Pulse
+      gpio_put(10, true);
+
+      sleep_us(50);
+
+      gpio_put(10, false);
+
+      sleep_us(50);
+    }
     // anim_set(0);
 
     // Update Arms
@@ -127,8 +139,6 @@ int main() {
     // multicore_fifo_pop_timeout_us(100, &state);
   }
 
-  f_unmount("0:");
-
   // Disarm System
   gpio_put(RELAY, false);
 }
@@ -138,52 +148,4 @@ void blink(int pin) {
   sleep_ms(100);
   gpio_put(pin, false);
   sleep_ms(100);
-}
-
-anim_t *loadAim(const char *path) {
-  FIL f;
-  unsigned int len;
-
-  if (f_open(&f, path, FA_READ) != FR_OK) {
-    return NULL;
-  }
-
-  // Read MAGIC
-  char magic[4];
-
-  if (f_read(&f, magic, 4, &len) != FR_OK || len != 4 ||
-      strncmp(magic, "ANPO", 4)) {
-    return NULL;
-  }
-
-  anim_t *out = malloc(sizeof(anim_t));
-
-  // Read Poses
-  if (f_read(&f, &out->poses, 1, &len) != FR_OK || len != 1) {
-    free(out);
-    return NULL;
-  }
-
-  if (f_read(&f, out->pose, out->poses * sizeof(*out->pose), &len) != FR_OK ||
-      len != out->poses * sizeof(*out->pose)) {
-    free(out);
-    return NULL;
-  }
-
-  // Read Anims
-  if (f_read(&f, &out->frames, 1, &len) != FR_OK || len != 1) {
-    free(out);
-    return NULL;
-  }
-
-  if (f_read(&f, out->frame, out->frames * sizeof(*out->frame), &len) !=
-          FR_OK ||
-      len != out->frames * sizeof(*out->frame)) {
-    free(out);
-    return NULL;
-  }
-
-  f_close(&f);
-
-  return out;
 }
