@@ -5,14 +5,14 @@
 #include <sstream>
 #include <stdexcept>
 
-#include <espeak-ng/speak_lib.h>
-#include <onnxruntime_cxx_api.h>
+#include <onnx/onnxruntime_cxx_api.h>
+#include <piper/espeak-ng/speak_lib.h>
 // #include <spdlog/spdlog.h>
 
-#include "json.hpp"
 #include "piper.hpp"
-#include "utf8.h"
-#include "wavfile.hpp"
+#include "piper/json.hpp"
+#include "piper/utf8.h"
+#include "piper/wavfile.hpp"
 
 namespace piper {
 

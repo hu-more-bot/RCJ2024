@@ -7,6 +7,9 @@
 #include <llm.hpp>
 #include <sd.hpp>
 
+#include <stt.hpp>
+#include <tts.hpp>
+
 #include <queue>
 
 struct Image {
@@ -23,9 +26,13 @@ int main() {
   // Load Models
   LLM llm("../models/zephyr-q4.gguf", "../prompt.txt");
   SD sd("../models/sd.gguf");
+
+  TTS tts("../models/piper/ryan.onnx");
+  STT stt("../models/whisper/ggml-base.en-q5_1.bin");
+
   ax_verbose("main", "initialization done");
 
-  Serial serial;
+  Serial serial("/dev/ttyACM0");
 
   // Image Queue
   std::queue<Image *> image;
@@ -93,7 +100,6 @@ int main() {
       sleep(0.3f);
   });
   ax_debug("main", "started painter");
-
 
   while (true) {
     // Get User In

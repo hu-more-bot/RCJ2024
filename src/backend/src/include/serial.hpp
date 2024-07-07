@@ -2,7 +2,7 @@
 
 class Serial {
 public:
-  Serial(const char *port = "/dev/ttyUSB0");
+  Serial(const char *port);
   ~Serial();
 
   void send(void *data, unsigned long len);

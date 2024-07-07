@@ -1,20 +1,21 @@
 #include <sd.hpp>
 
-#include <stdexcept>
 #include <unistd.h>
 
+#include <Artifex/log.h>
+
+#define TAG "sd"
+
 SD::SD(const char *model) {
-  int n_threads = -1;
-  sd_type_t wtype = SD_TYPE_COUNT;
-  rng_type_t rng_type = CUDA_RNG;
-  schedule_t schedule = DEFAULT;
-  bool control_net_cpu = false;
+  ctx = new_sd_ctx(model, "", "", "", "", "", false, false, true, -1,
+                   SD_TYPE_COUNT, STD_DEFAULT_RNG, DEFAULT, false);
 
-  ctx = new_sd_ctx(model, "", "", "", "", "", false, false, true, n_threads,
-                   wtype, rng_type, schedule, control_net_cpu);
+  if (ctx == NULL) {
+    ax_error(TAG, "failed to create context");
+    return;
+  }
 
-  if (ctx == NULL)
-    throw std::runtime_error(std::string(__func__) + ": new_sd_ctx_t failed");
+  ax_verbose(TAG, "initialized");
 }
 
 SD::~SD() {
@@ -22,6 +23,8 @@ SD::~SD() {
   free(result);
 
   free_sd_ctx(ctx);
+
+  ax_verbose(TAG, "destroyed");
 }
 
 bool SD::generate() {
@@ -38,7 +41,11 @@ bool SD::generate() {
                    NULL, // control image
                    config.control_strength);
 
-  if (result)
+  if (result) {
+    ax_debug(TAG, "generted image");
     return true;
+  }
+
+  ax_warning(TAG, "failed to generate image");
   return false;
 }

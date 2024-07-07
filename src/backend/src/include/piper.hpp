@@ -8,12 +8,12 @@
 #include <string>
 #include <vector>
 
-#include <onnxruntime_cxx_api.h>
-#include <piper-phonemize/phoneme_ids.hpp>
-#include <piper-phonemize/phonemize.hpp>
-#include <piper-phonemize/tashkeel.hpp>
+#include <onnx/onnxruntime_cxx_api.h>
+#include <piper/piper-phonemize/phoneme_ids.hpp>
+#include <piper/piper-phonemize/phonemize.hpp>
+#include <piper/piper-phonemize/tashkeel.hpp>
 
-#include "json.hpp"
+#include "piper/json.hpp"
 
 using json = nlohmann::json;
 

@@ -45,8 +45,10 @@ void core1() {
   // core1 Loop
   while (1) {
     // Read Person's location
-    // char line[32];
-    // fgets(line, sizeof(line), stdin);
+    char line[32];
+    memset(line, 0, 32);
+    fgets(line, 32, stdin);
+    printf("said: %s\n", line);
 
     // TODO parse line
     // sscanf(line, "%f", &person);
@@ -96,41 +98,41 @@ int main() {
   // Init Pose & Base
   // anim_init(0, 0);
   pose_init(SERVO);
-  // base_init(STEPPER);
+  base_init(STEPPER);
 
-  gpio_init(8);
-  gpio_init(9);
-  gpio_init(10);
+  // gpio_put(8, false);
+  // gpio_put(9, true);
+  // gpio_put(11, false);
+  // gpio_put(12, true);
 
-  gpio_set_dir(8, GPIO_OUT);
-  gpio_set_dir(9, GPIO_OUT);
-  gpio_set_dir(10, GPIO_OUT);
+  // for (int i = 0; i < 1200; i++) {
+  //   gpio_put(10, false);
+  //   gpio_put(13, false);
+
+  //   sleep_us(500);
+
+  //   gpio_put(10, true);
+  //   gpio_put(13, true);
+
+  //   sleep_us(500);
+  // }
+
+  base_speed(700);
+  base_step(1200, 1200);
+
+  sleep_ms(500);
 
   // uint32_t state;
   while (true) {
     pose_set(pose_rest);
     pose_update();
 
-    // Enable / Disable
-    gpio_put(8, 0);
+    base_enable(0, 0);
+    // base_step(1, 1);
 
-    // Set Dir
-    gpio_put(9, 0);
-
-    // Step Motors
-    for (int i = 0; i < 3200; i++) {
-      // Pulse
-      gpio_put(10, true);
-
-      sleep_us(50);
-
-      gpio_put(10, false);
-
-      sleep_us(50);
-    }
     // anim_set(0);
 
-    // Update Arms
+    // Update Armsint leftint leftint left
     // anim_update();
 
     // base_step(10, 10);

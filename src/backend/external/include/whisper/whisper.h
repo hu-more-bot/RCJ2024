@@ -1,7 +1,7 @@
 #ifndef WHISPER_H
 #define WHISPER_H
 
-#include "ggml.h"
+#include "ggml/ggml.h"
 
 #include <stdbool.h>
 #include <stddef.h>

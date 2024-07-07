@@ -1,16 +1,22 @@
 # Backend
-The back-end program that runs the LLM and the Image Generation and controls the movement of the robot
+This program runs the heavy AI models (LLM, SD, STT, TTS) and controls the movement of the robot
 
 ## Hardware
-This code runs on a [HP Victus something something]() Laptop which is connected to a [Raspberry Pi Pico]() via USB \
-The two laptops are connected with a crossover LAN cable
+This code runs on a [HP Victus 16](https://www.hp.com/us-en/shop/mdp/victus/victus-16) Laptop featuring a powerful [NVIDIA RTX 3060](https://www.nvidia.com/en-eu/geforce/graphics-cards/30-series/rtx-3060-3060ti/) GPU
 
 ## Software
-The backend uses [llama.cpp](https://github.com/ggerganov/llama.cpp/tree/a0fc62661f0fd2a9edd10ae5617345bbbf972f42) for running the LLM and [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) for generating images which both use the [GGML Library](https://github.com/ggerganov/ggml/tree/57869ad3b7b1f49ae18e3238b0d69a9467a8f068)[^1]. \
-It uses a custom networking library built on top of the linux networking sockets to communicate with the frontend (laptop)
+TODO
+
+### Libraries
+- LLM: [llama.cpp](https://github.com/ggerganov/llama.cpp/tree/a0fc62661f0fd2a9edd10ae5617345bbbf972f42)[^1]
+- SD: [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)[^1]
+- TTS: [piper](https://github.com/rhasspy/piper)
+- STT: [whisper.cpp](https://github.com/ggerganov/whisper.cpp)
 
 ### Models
-This program uses [Zephyr 7B Beta]() as for the LLM and [some sort of SD]() for image generation.
+- LLM: [Zephyr 7B Beta](https://huggingface.co/SamTheDev/zephyr-7b-beta-4bit-gguf/resolve/main/zephyr-q4.gguf)
+- SD: [Stable Diffusion XL Turbo](https://huggingface.co/stabilityai/sdxl-turbo)
+- TTS: [Piper](https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high/)/ryan
+- STT: [Whisper](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.en-q5_0.bin)
 
-[^1]: The Stable Diffusion Library uses an old version of the GGML Library which made us use an old version of llama.cpp \
-This has caused a lot of headaches during development :/
+[^1]: Both the LLM & SD libraries use [GGML](https://github.com/ggerganov/ggml/tree/57869ad3b7b1f49ae18e3238b0d69a9467a8f068), but not with the same version. This has caused a lot of headache

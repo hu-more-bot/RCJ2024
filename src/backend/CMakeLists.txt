@@ -7,6 +7,11 @@ set(SOURCES
     # AI
     src/llm.cpp
     src/sd.cpp
+
+    src/stt.cpp
+    src/tts.cpp
+
+    src/piper.cpp
   
     src/server.cpp
     src/serial.cpp
@@ -18,7 +23,17 @@ set(LIBRARIES
     common
     
     stable-diffusion
+
+    whisper
+    wcommon
+    common-sdl
+    SDL2
+    SDL2_mixer
+
+    piper_phonemize
+    espeak-ng
     
+    onnxruntime
     ggml
 
     axCommon # for logging
