@@ -47,7 +47,7 @@ int pose_init(int startPin) {
   return 0;
 }
 
-void pose_set(pose_t pose) {
+void pose_set(const pose_t pose) {
   for (int i = 0; i < 8; i++)
     _pose.target[i] = pose[i];
 }

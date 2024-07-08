@@ -2,8 +2,6 @@
 
 #include <stable-diffusion.h>
 
-#include <string>
-
 class SD {
 public:
   SD(const char *model);

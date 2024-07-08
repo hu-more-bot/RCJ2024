@@ -2,21 +2,18 @@ pose: rest
 - left: 0 0.01 0.5 0
 - right: 0.01 0 0.5 0
 
-pose: T
-- left: 1 0 0 0
-- right: 1 2 0 0
-
-
-
 pose: a
-- left: 1 1 1 1
-- right: 1 1 1 1
+- left: 0 0 0 0
+- right: 0 0 0 0
+
+pose: b
+- left: 0.5 0 0.5 0.3
+- right: 0.5 0 0.5 0.3
 
 // new animation called idle
 anim: idle
 
 // set frames `num: {left} {right} delay`
 - frames:
-1: rest 3
-2: a 2
-3: T 0.5
+1: a 2
+2: b 2

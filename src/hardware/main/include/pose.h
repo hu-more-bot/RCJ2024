@@ -7,7 +7,7 @@ typedef float pose_t[8];
 int pose_init(int startPin);
 
 // Set Target Pose
-void pose_set(pose_t pose);
+void pose_set(const pose_t pose);
 
 // Update Arms
 void pose_update();
