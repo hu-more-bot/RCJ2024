@@ -11,8 +11,8 @@
 #include "client.h"
 #include "image.h"
 
-#define MIN(a, b) (a < b ? a : b)
-#define MAX(a, b) (a > b ? a : b)
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define LIMIT(x, min, max) (MAX(MIN(x, max), min))
 #define PERCENT(x) LIMIT(x, 0, 1)
 
@@ -23,11 +23,13 @@
 void framecb(struct axCameraFrame *frame, void *user_ptr) {
   struct Session *session = (struct Session *)user_ptr;
 
-  if (!frame || !session)
+  if (!frame || !session) {
+    ax_warning("framecb", "no frame/session");
     return;
+  }
 
   if (frame->width != 640 || frame->height != 480) {
-    ax_warning("camera", "invalid frame");
+    ax_warning("framecb", "invalid frame");
     return;
   }
 
@@ -62,6 +64,7 @@ void framecb(struct axCameraFrame *frame, void *user_ptr) {
   struct Result *result;
   int count = yoloDetect(session->yolo, data, &result);
 
+  // TODO rethink & make better
   float max = 0;
   int id = -1;
   float pos[2], size[2];
@@ -80,29 +83,34 @@ void framecb(struct axCameraFrame *frame, void *user_ptr) {
     }
   }
 
-  // if haz person, send pos & cropped
+  // if has person, send pos & cropped
   if (id >= 0) {
     // set & send relative position
-    const char id[6] = "PERSON";
-    float person = session->person =
+    session->person =
         PERCENT((pos[0] + size[0] / 2.0f) / frame->width) * -2.0f + 1;
 
-    clientSend(session->client, id, 6 + 2);
+    struct {
+      const char id[6];
+      float person;
+    } msg = {"PERSON", session->person};
 
-    // Send Image (if required)
+    clientSend(session->client, (void *)&msg, sizeof(msg));
+
+    // Send Image (if requested)
     if (session->image.request) {
-      const char id[5] = "IMAGE";
-      uint16_t width = IM_RES_W, height = IM_RES_H;
-      uint8_t channels = 3;
-      unsigned char cropped[IM_RES_W * IM_RES_H * 3];
+      struct {
+        const char id[5];
+        uint16_t width, height;
+        uint8_t channels;
+        unsigned char cropped[IM_RES_W * IM_RES_H * 3];
+      } msg = {"IMAGE", IM_RES_W, IM_RES_H, 3};
 
       // crop image
-      cropImage(frame->data, frame->width, frame->height, cropped, IM_RES_W,
+      cropImage(frame->data, frame->width, frame->height, msg.cropped, IM_RES_W,
                 IM_RES_H, pos[0] + size[0] / 2.0f, 320);
 
-      // send image data [id, w, h, ch, data]
-      clientSend(session->client, (char *)&id,
-                 5 + 2 + 2 + 1 + IM_RES_W * IM_RES_H * 3);
+      // send image data
+      clientSend(session->client, (void *)&msg, sizeof(msg));
 
       session->image.request = 0;
     }
@@ -116,12 +124,12 @@ void clientcb(const struct clientEvent *event, void *user_ptr) {
 
   switch (event->type) {
   case MESSAGE: {
-    // SPK: raw generated text with emotes embedded
-    // IMG: generated image to get displayed
     if (!strncmp("IMREQ", event->data, 5)) {
+      // Image Request
       session->image.request = 1; // request image
       ax_debug("main", "image request set");
     } else if (!strncmp("IMAGE", event->data, 5)) {
+      // Image to Post
       memcpy(&session->image.width, &event->data[5], 2);
       memcpy(&session->image.height, &event->data[7], 2);
       memcpy(&session->image.channels, &event->data[9], 1);
@@ -130,7 +138,7 @@ void clientcb(const struct clientEvent *event, void *user_ptr) {
                            session->image.channels;
 
       if (event->len != 5 + 2 + 2 + 1 + size) {
-        ax_warning("main", "incorrect message size");
+        ax_warning("clientcb", "incorrect message size");
         break;
       }
 
@@ -139,9 +147,11 @@ void clientcb(const struct clientEvent *event, void *user_ptr) {
       memcpy(&session->image.data, &event->data[10], size);
 
       session->image.refresh = 1;
-      ax_debug("main", "image refresh required");
+      ax_debug("clientcb", "image refresh required");
     } else
-      ax_warning("main", "incorrect message header");
+      ax_debug("clientcb", "incorrect message header");
+
+    // TODO expressions
   } break;
 
   default:

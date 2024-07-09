@@ -90,7 +90,7 @@ int main() {
 
       // TODO generate & send image
 
-      const char id[5] = {'I', 'M', 'G', 'I', 'N'};
+      const char id[5] = {'I', 'M', 'A', 'G', 'E'};
       uint16_t width = sd.config.width, height = sd.config.height;
       uint8_t channels = 3;
       unsigned char data[width * height * channels];
@@ -113,6 +113,7 @@ int main() {
     printf("AI:\n\e[0;94m");
     llm.decode("client", text);
     llm.generate([&](std::string token) {
+      // TODO action parser
       printf("%s", token.c_str());
       fflush(stdout);
     });

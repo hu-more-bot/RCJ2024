@@ -20,3 +20,11 @@ TODO
 - STT: [Whisper](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.en-q5_0.bin)
 
 [^1]: Both the LLM & SD libraries use [GGML](https://github.com/ggerganov/ggml/tree/57869ad3b7b1f49ae18e3238b0d69a9467a8f068), but not with the same version. This has caused a lot of headache
+
+### Communication
+Sends:
+- **IMAGE**: id (c[5]), width (u16), height (u16), channels (u8), data (uc[w * h * ch]); generated image
+
+Accepts:
+- **IMAGE**: id (c[5]), width (u16), height (u16), channels (u8), data (uc[w * h * ch]); picture of person
+- **PERSON**: id (c[6]), position (f); person location

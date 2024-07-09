@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Artifex/log.h>
 #include <Artifex/renderer.h>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -11,8 +12,10 @@ unsigned int loadTexture(axRenderer renderer, const char *path) {
   int w, h, ch;
   unsigned char *data = stbi_load(path, &w, &h, &ch, 4);
 
-  if (!data)
+  if (!data) {
+    ax_warning("loadTexture", "failed to open file");
     return 0; // failed to open file
+  }
 
   unsigned int id = axRendererLoadTexture(renderer, w, h, ch, data);
   free(data);
@@ -38,14 +41,10 @@ unsigned int loadTexture(axRenderer renderer, const char *path) {
 void cropImage(unsigned char *data, int width, int height,
                unsigned char *newData, int newWidth, int newHeight, int centerX,
                int centerY) {
-  if (!data || width <= 0 || height <= 0 || !newData)
+  if (!data || width <= 0 || height <= 0 || !newData) {
+    ax_warning("cropImage", "no image data");
     return;
-
-  if (newWidth <= 0)
-    newWidth = width;
-
-  if (newHeight <= 0)
-    newHeight = height;
+  }
 
   // left to right, top to bottom
   for (int y = 0; y < newHeight; y++) {
