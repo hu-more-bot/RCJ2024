@@ -10,7 +10,8 @@
 
 #define TAG "tts"
 
-TTS::TTS(const char *model, const char *eSpeakData) {
+TTS::TTS(const char *model, const char *eSpeakData)
+{
   // tts.config.eSpeakDataPath = std::string(argv[2]);
   // auto outputPath = std::string(argv[3]);
 
@@ -25,31 +26,18 @@ TTS::TTS(const char *model, const char *eSpeakData) {
   ax_verbose(TAG, "initialized");
 }
 
-TTS::~TTS() {
+TTS::~TTS()
+{
   piper::terminate(tts.config);
   ax_verbose(TAG, "destroyed");
 }
 
-std::vector<int16_t> TTS::say(std::string text) {
+std::vector<int16_t> TTS::say(std::string text)
+{
   std::vector<int16_t> out;
 
   piper::SynthesisResult result;
   piper::textToAudio(tts.config, tts.voice, text, out, result, nullptr);
 
   return out;
-}
-
-bool TTS::sayToFile(std::string text, const char *output) {
-  // Output audio to WAV file
-  std::ofstream audioFile(output, std::ios::binary);
-
-  if (!audioFile.is_open())
-    return true;
-
-  piper::SynthesisResult result;
-  piper::textToWavFile(tts.config, tts.voice, text, audioFile, result);
-
-  audioFile.close();
-
-  return false;
 }

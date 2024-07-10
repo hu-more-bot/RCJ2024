@@ -5,14 +5,13 @@
 #include <sstream>
 #include <stdexcept>
 
-#include <onnx/onnxruntime_cxx_api.h>
-#include <piper/espeak-ng/speak_lib.h>
+#include <espeak-ng/speak_lib.h>
+#include <onnxruntime_cxx_api.h>
 // #include <spdlog/spdlog.h>
 
 #include "piper.hpp"
 #include "piper/json.hpp"
 #include "piper/utf8.h"
-#include "piper/wavfile.hpp"
 
 namespace piper {
 
@@ -623,23 +622,5 @@ void textToAudio(PiperConfig &config, Voice &voice, std::string text,
   }
 
 } /* textToAudio */
-
-// Phonemize text and synthesize audio to WAV file
-void textToWavFile(PiperConfig &config, Voice &voice, std::string text,
-                   std::ostream &audioFile, SynthesisResult &result) {
-
-  std::vector<int16_t> audioBuffer;
-  textToAudio(config, voice, text, audioBuffer, result, NULL);
-
-  // Write WAV
-  auto synthesisConfig = voice.synthesisConfig;
-  writeWavHeader(synthesisConfig.sampleRate, synthesisConfig.sampleWidth,
-                 synthesisConfig.channels, (int32_t)audioBuffer.size(),
-                 audioFile);
-
-  audioFile.write((const char *)audioBuffer.data(),
-                  sizeof(int16_t) * audioBuffer.size());
-
-} /* textToWavFile */
 
 } // namespace piper

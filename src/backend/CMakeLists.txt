@@ -1,12 +1,14 @@
 cmake_minimum_required(VERSION 3.5)
 
+option(RCJ_BACKEND_CUDA "build with CUDA support" ON)
+
 # Source Files
 set(SOURCES
     main.cpp
 
     # AI
     src/llm.cpp
-    src/sd.cpp
+    # src/sd.cpp
 
     src/stt.cpp
     src/tts.cpp
@@ -19,24 +21,27 @@ set(SOURCES
 
 # Libraries
 set(LIBRARIES
-    llama
-    common
-    
-    stable-diffusion
+    # llm
+    onnxruntime-genai
+    onnxruntime
+
+    # sd
+    # stable-diffusion
+    # ggml
 
     whisper
-    wcommon
+    common
     common-sdl
     SDL2
     SDL2_mixer
 
+    # tts
     piper_phonemize
     espeak-ng
-    
-    onnxruntime
-    ggml
 
-    axCommon # for logging
+    # logging & audio
+    axCommon
+    axMixer
 )
 
 project(backend)

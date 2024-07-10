@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <onnx/onnxruntime_cxx_api.h>
+#include <onnxruntime_cxx_api.h>
 #include <piper/piper-phonemize/phoneme_ids.hpp>
 #include <piper/piper-phonemize/phonemize.hpp>
 #include <piper/piper-phonemize/tashkeel.hpp>

@@ -7,8 +7,11 @@ public:
   SD(const char *model);
   ~SD();
 
+  // txt2img
+  bool txt();
+
   // img2img
-  bool generate();
+  bool img();
 
   bool show = false;
   sd_image_t *result = NULL;
@@ -16,6 +19,7 @@ public:
   struct {
     char prompt[128] = "";
     char negative_prompt[128] = "";
+    sd_image_t image;
 
     float min_cfg = 1.0f;
     float cfg_scale = 7.0f;

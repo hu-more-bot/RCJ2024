@@ -1,17 +1,19 @@
+#include <Artifex/log.h>
+
 #include <stt.hpp>
 
-#include "whisper/common.h"
-#include "whisper/grammar-parser.h"
+#include "common.h"
+#include "common-sdl.h"
+#include "grammar-parser.h"
 
 #include <stdexcept>
 #include <unistd.h>
 
-#include <Artifex/log.h>
-
 #define TAG "stt"
 
 // command-line parameters
-struct whisper_params {
+struct whisper_params
+{
   int32_t n_threads = std::min(4, (int32_t)std::thread::hardware_concurrency());
   int32_t prompt_ms = 5000;
   int32_t command_ms = 8000;
@@ -45,7 +47,8 @@ struct whisper_params {
 std::string transcribe(whisper_context *ctx, const whisper_params &params,
                        const std::vector<float> &pcmf32,
                        const std::string &grammar_rule, float &logprob_min,
-                       float &logprob_sum, int &n_tokens, int64_t &t_ms) {
+                       float &logprob_sum, int &n_tokens, int64_t &t_ms)
+{
   const auto t_start = std::chrono::high_resolution_clock::now();
 
   logprob_min = 0.0f;
@@ -71,7 +74,7 @@ std::string transcribe(whisper_context *ctx, const whisper_params &params,
   wparams.n_threads = params.n_threads;
 
   wparams.audio_ctx = params.audio_ctx;
-  wparams.speed_up = params.speed_up;
+  // wparams.speed_up = params.speed_up;
 
   wparams.temperature = 0.4f;
   wparams.temperature_inc = 1.0f;
@@ -84,14 +87,18 @@ std::string transcribe(whisper_context *ctx, const whisper_params &params,
   const auto &grammar_parsed = params.grammar_parsed;
   auto grammar_rules = grammar_parsed.c_rules();
 
-  if (!params.grammar_parsed.rules.empty() && !grammar_rule.empty()) {
+  if (!params.grammar_parsed.rules.empty() && !grammar_rule.empty())
+  {
     if (grammar_parsed.symbol_ids.find(grammar_rule) ==
-        grammar_parsed.symbol_ids.end()) {
+        grammar_parsed.symbol_ids.end())
+    {
       fprintf(stderr,
               "%s: warning: grammar rule '%s' not found - skipping grammar "
               "sampling\n",
               __func__, grammar_rule.c_str());
-    } else {
+    }
+    else
+    {
       wparams.grammar_rules = grammar_rules.data();
       wparams.n_grammar_rules = grammar_rules.size();
       wparams.i_start_rule = grammar_parsed.symbol_ids.at(grammar_rule);
@@ -99,20 +106,23 @@ std::string transcribe(whisper_context *ctx, const whisper_params &params,
     }
   }
 
-  if (whisper_full(ctx, wparams, pcmf32.data(), pcmf32.size()) != 0) {
+  if (whisper_full(ctx, wparams, pcmf32.data(), pcmf32.size()) != 0)
+  {
     return "";
   }
 
   std::string result;
 
   const int n_segments = whisper_full_n_segments(ctx);
-  for (int i = 0; i < n_segments; ++i) {
+  for (int i = 0; i < n_segments; ++i)
+  {
     const char *text = whisper_full_get_segment_text(ctx, i);
 
     result += text;
 
     const int n = whisper_full_n_tokens(ctx, i);
-    for (int j = 0; j < n; ++j) {
+    for (int j = 0; j < n; ++j)
+    {
       const auto token = whisper_full_get_token_data(ctx, i, j);
 
       if (token.plog > 0.0f)
@@ -132,7 +142,8 @@ std::string transcribe(whisper_context *ctx, const whisper_params &params,
 
 void stt_cb_log_disable(enum ggml_log_level, const char *, void *) {}
 
-STT::STT(const char *model) : audio(30 * 1000) {
+STT::STT(const char *model) : audio(30 * 1000)
+{
   // Disable Logging
   whisper_log_set(stt_cb_log_disable, NULL);
 
@@ -140,14 +151,16 @@ STT::STT(const char *model) : audio(30 * 1000) {
   struct whisper_context_params cparams = whisper_context_default_params();
   cparams.use_gpu = true;
 
-  if (!(ctx = whisper_init_from_file_with_params(model, cparams))) {
+  if (!(ctx = whisper_init_from_file_with_params(model, cparams)))
+  {
     ax_error(TAG, "failed to create context");
     return;
   }
 
   // init audio
 
-  if (!audio.init(-1, WHISPER_SAMPLE_RATE)) {
+  if (!audio.init(-1, WHISPER_SAMPLE_RATE))
+  {
     ax_error(TAG, "audio.init() failed");
     return;
   }
@@ -155,12 +168,14 @@ STT::STT(const char *model) : audio(30 * 1000) {
   ax_verbose(TAG, "initialized");
 }
 
-STT::~STT() {
+STT::~STT()
+{
   whisper_free(ctx);
   ax_verbose(TAG, "destroyed");
 }
 
-std::string STT::listen() {
+std::string STT::listen()
+{
   audio.resume();
 
   whisper_params params;
@@ -191,7 +206,8 @@ std::string STT::listen() {
   std::vector<float> pcmf32_prompt;
 
   // main loop
-  while (is_running) {
+  while (is_running)
+  {
     // handle Ctrl + C
     is_running = sdl_poll_events();
 
@@ -201,7 +217,8 @@ std::string STT::listen() {
     audio.get(2000, pcmf32_cur);
 
     if (::vad_simple(pcmf32_cur, WHISPER_SAMPLE_RATE, 1000, params.vad_thold,
-                     params.freq_thold, params.print_energy)) {
+                     params.freq_thold, params.print_energy))
+    {
       ax_debug(TAG, "speech detected");
 
       int64_t t_ms = 0;
