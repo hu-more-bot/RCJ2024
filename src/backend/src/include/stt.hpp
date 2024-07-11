@@ -8,7 +8,8 @@
 #include <vector>
 
 // command-line parameters
-struct whisper_params {
+struct whisper_params
+{
   int32_t n_threads = std::min(4, (int32_t)std::thread::hardware_concurrency());
   int32_t prompt_ms = 5000;
   int32_t command_ms = 8000;
@@ -44,7 +45,8 @@ struct whisper_params {
 };
 
 // Wrapper Class for the whisper.cpp library
-class STT {
+class STT
+{
 public:
   STT(const char *model);
   ~STT();

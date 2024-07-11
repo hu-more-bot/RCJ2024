@@ -20,7 +20,7 @@ public:
 
   struct
   {
-    std::string ai_name = "ai painter";
+    std::string ai_name = "rick"; //"ai painter";
     std::string user_name = "interviewer";
 
     unsigned int token_size = 4096;

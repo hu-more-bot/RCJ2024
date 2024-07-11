@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-option(RCJ_BACKEND_CUDA "build with CUDA support" OFF)
+option(RCJ_BACKEND_CUDA "build with CUDA support" ON)
 
 # Source Files
 set(SOURCES

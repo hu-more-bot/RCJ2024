@@ -14,7 +14,8 @@ std::string transcribe(whisper_context *ctx, const whisper_params &params,
                        float &logprob_sum, int &n_tokens, int64_t &t_ms);
 void stt_cb_log_disable(enum ggml_log_level, const char *, void *) {}
 
-STT::STT(const char *model) : audio(30 * 1000) {
+STT::STT(const char *model) : audio(30 * 1000)
+{
   // Disable Logging
   whisper_log_set(stt_cb_log_disable, NULL);
 
@@ -25,15 +26,17 @@ STT::STT(const char *model) : audio(30 * 1000) {
   cparams.use_gpu = true;
   cparams.flash_attn = false;
 
-  if (!(ctx = whisper_init_from_file_with_params(getenv("MODEL_WHISPER_TINY"),
-                                                 cparams))) {
+  if (!(ctx = whisper_init_from_file_with_params(model,
+                                                 cparams)))
+  {
     ax_error(TAG, "failed to init");
     return;
   }
 
   // init audio
 
-  if (!audio.init(-1, WHISPER_SAMPLE_RATE)) {
+  if (!audio.init(-1, WHISPER_SAMPLE_RATE))
+  {
     ax_error(TAG, "failed to init audio");
     return;
   }
@@ -41,37 +44,47 @@ STT::STT(const char *model) : audio(30 * 1000) {
   ax_verbose(TAG, "initialized");
 }
 
-STT::~STT() {
+STT::~STT()
+{
+  audio.~audio_async();
   whisper_free(ctx);
   ax_verbose(TAG, "destroyed");
 }
 
-std::string STT::listen() {
+std::string STT::listen()
+{
   audio.resume();
 
   // wait for 1 second to avoid any buffered noise
-  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  // std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   audio.clear();
 
   int ret_val = 0;
 
-  if (!params.grammar.empty()) {
+  if (!params.grammar.empty())
+  {
     auto &grammar = params.grammar_parsed;
-    if (is_file_exist(params.grammar.c_str())) {
+    if (is_file_exist(params.grammar.c_str()))
+    {
       // read grammar from file
       std::ifstream ifs(params.grammar.c_str());
       const std::string txt = std::string((std::istreambuf_iterator<char>(ifs)),
                                           std::istreambuf_iterator<char>());
       grammar = grammar_parser::parse(txt.c_str());
-    } else {
+    }
+    else
+    {
       // read grammar from string
       grammar = grammar_parser::parse(params.grammar.c_str());
     }
 
     // will be empty (default) if there are parse errors
-    if (grammar.rules.empty()) {
+    if (grammar.rules.empty())
+    {
       ret_val = 1;
-    } else {
+    }
+    else
+    {
       fprintf(stderr, "%s: grammar:\n", __func__);
       grammar_parser::print_grammar(stderr, grammar);
       fprintf(stderr, "\n");
@@ -93,14 +106,17 @@ std::string STT::listen() {
   std::string out;
 
   // main loop
-  while (sdl_poll_events()) {
+  while (true)
+  {
+    sdl_poll_events();
     // delay
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     audio.get(2000, pcmf32_cur);
 
     if (::vad_simple(pcmf32_cur, WHISPER_SAMPLE_RATE, 1000, params.vad_thold,
-                     params.freq_thold, params.print_energy)) {
+                     params.freq_thold, params.print_energy))
+    {
       fprintf(stdout, "%s: Speech detected! Processing ...\n", __func__);
 
       int64_t t_ms = 0;
@@ -131,7 +147,8 @@ std::string STT::listen() {
 std::string transcribe(whisper_context *ctx, const whisper_params &params,
                        const std::vector<float> &pcmf32,
                        const std::string &grammar_rule, float &logprob_min,
-                       float &logprob_sum, int &n_tokens, int64_t &t_ms) {
+                       float &logprob_sum, int &n_tokens, int64_t &t_ms)
+{
   const auto t_start = std::chrono::high_resolution_clock::now();
 
   logprob_min = 0.0f;
@@ -172,14 +189,18 @@ std::string transcribe(whisper_context *ctx, const whisper_params &params,
   const auto &grammar_parsed = params.grammar_parsed;
   auto grammar_rules = grammar_parsed.c_rules();
 
-  if (!params.grammar_parsed.rules.empty() && !grammar_rule.empty()) {
+  if (!params.grammar_parsed.rules.empty() && !grammar_rule.empty())
+  {
     if (grammar_parsed.symbol_ids.find(grammar_rule) ==
-        grammar_parsed.symbol_ids.end()) {
+        grammar_parsed.symbol_ids.end())
+    {
       fprintf(stderr,
               "%s: warning: grammar rule '%s' not found - skipping grammar "
               "sampling\n",
               __func__, grammar_rule.c_str());
-    } else {
+    }
+    else
+    {
       wparams.grammar_rules = grammar_rules.data();
       wparams.n_grammar_rules = grammar_rules.size();
       wparams.i_start_rule = grammar_parsed.symbol_ids.at(grammar_rule);
@@ -187,20 +208,23 @@ std::string transcribe(whisper_context *ctx, const whisper_params &params,
     }
   }
 
-  if (whisper_full(ctx, wparams, pcmf32.data(), pcmf32.size()) != 0) {
+  if (whisper_full(ctx, wparams, pcmf32.data(), pcmf32.size()) != 0)
+  {
     return "";
   }
 
   std::string result;
 
   const int n_segments = whisper_full_n_segments(ctx);
-  for (int i = 0; i < n_segments; ++i) {
+  for (int i = 0; i < n_segments; ++i)
+  {
     const char *text = whisper_full_get_segment_text(ctx, i);
 
     result += text;
 
     const int n = whisper_full_n_tokens(ctx, i);
-    for (int j = 0; j < n; ++j) {
+    for (int j = 0; j < n; ++j)
+    {
       const auto token = whisper_full_get_token_data(ctx, i, j);
 
       if (token.plog > 0.0f)

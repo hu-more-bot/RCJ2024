@@ -98,7 +98,7 @@ std::string LLM::reply(std::string input,
   params->SetSearchOption("max_length", config.token_size);
   params->SetInputSequences(*sequences);
 
-  auto generator = OgaGenerator::Create(*llm->model, *params);
+  auto generator = OgaGenerator::Create(*llm->model, *params); // asd
 
   while (!generator->IsDone())
   {
