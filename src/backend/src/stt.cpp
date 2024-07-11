@@ -2,53 +2,136 @@
 
 #include <stt.hpp>
 
-#include "common.h"
-#include "common-sdl.h"
-#include "grammar-parser.h"
+#include "whisper.h"
 
-#include <stdexcept>
 #include <unistd.h>
 
 #define TAG "stt"
 
-// command-line parameters
-struct whisper_params
-{
-  int32_t n_threads = std::min(4, (int32_t)std::thread::hardware_concurrency());
-  int32_t prompt_ms = 5000;
-  int32_t command_ms = 8000;
-  int32_t capture_id = -1;
-  int32_t max_tokens = 32;
-  int32_t audio_ctx = 0;
+std::string transcribe(whisper_context *ctx, const whisper_params &params,
+                       const std::vector<float> &pcmf32,
+                       const std::string &grammar_rule, float &logprob_min,
+                       float &logprob_sum, int &n_tokens, int64_t &t_ms);
+void stt_cb_log_disable(enum ggml_log_level, const char *, void *) {}
 
-  float vad_thold = 0.6f;
-  float freq_thold = 100.0f;
+STT::STT(const char *model) : audio(30 * 1000) {
+  // Disable Logging
+  whisper_log_set(stt_cb_log_disable, NULL);
 
-  float grammar_penalty = 100.0f;
+  // whisper init
 
-  grammar_parser::parse_state grammar_parsed;
+  struct whisper_context_params cparams = whisper_context_default_params();
 
-  bool speed_up = false;
-  bool translate = false;
-  bool print_special = false;
-  bool print_energy = false;
-  bool no_timestamps = true;
-  bool use_gpu = true;
+  cparams.use_gpu = true;
+  cparams.flash_attn = false;
 
-  std::string language = "en";
-  std::string model = "../models/ggml-tiny.bin";
-  std::string fname_out;
-  std::string commands;
-  std::string prompt;
-  std::string context;
-  std::string grammar;
-};
+  if (!(ctx = whisper_init_from_file_with_params(getenv("MODEL_WHISPER_TINY"),
+                                                 cparams))) {
+    ax_error(TAG, "failed to init");
+    return;
+  }
+
+  // init audio
+
+  if (!audio.init(-1, WHISPER_SAMPLE_RATE)) {
+    ax_error(TAG, "failed to init audio");
+    return;
+  }
+
+  ax_verbose(TAG, "initialized");
+}
+
+STT::~STT() {
+  whisper_free(ctx);
+  ax_verbose(TAG, "destroyed");
+}
+
+std::string STT::listen() {
+  audio.resume();
+
+  // wait for 1 second to avoid any buffered noise
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  audio.clear();
+
+  int ret_val = 0;
+
+  if (!params.grammar.empty()) {
+    auto &grammar = params.grammar_parsed;
+    if (is_file_exist(params.grammar.c_str())) {
+      // read grammar from file
+      std::ifstream ifs(params.grammar.c_str());
+      const std::string txt = std::string((std::istreambuf_iterator<char>(ifs)),
+                                          std::istreambuf_iterator<char>());
+      grammar = grammar_parser::parse(txt.c_str());
+    } else {
+      // read grammar from string
+      grammar = grammar_parser::parse(params.grammar.c_str());
+    }
+
+    // will be empty (default) if there are parse errors
+    if (grammar.rules.empty()) {
+      ret_val = 1;
+    } else {
+      fprintf(stderr, "%s: grammar:\n", __func__);
+      grammar_parser::print_grammar(stderr, grammar);
+      fprintf(stderr, "\n");
+    }
+  }
+
+  float logprob_min0 = 0.0f;
+  float logprob_min = 0.0f;
+
+  float logprob_sum0 = 0.0f;
+  float logprob_sum = 0.0f;
+
+  int n_tokens0 = 0;
+  int n_tokens = 0;
+
+  std::vector<float> pcmf32_cur;
+  std::vector<float> pcmf32_prompt;
+
+  std::string out;
+
+  // main loop
+  while (sdl_poll_events()) {
+    // delay
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    audio.get(2000, pcmf32_cur);
+
+    if (::vad_simple(pcmf32_cur, WHISPER_SAMPLE_RATE, 1000, params.vad_thold,
+                     params.freq_thold, params.print_energy)) {
+      fprintf(stdout, "%s: Speech detected! Processing ...\n", __func__);
+
+      int64_t t_ms = 0;
+
+      // we have heard the activation phrase, now detect the commands
+      audio.get(params.command_ms, pcmf32_cur);
+
+      // prepend 3 second of silence
+      pcmf32_cur.insert(pcmf32_cur.begin(), 3.0f * WHISPER_SAMPLE_RATE, 0.0f);
+
+      // prepend the prompt audio
+      pcmf32_cur.insert(pcmf32_cur.begin(), pcmf32_prompt.begin(),
+                        pcmf32_prompt.end());
+
+      out = ::trim(::transcribe(ctx, params, pcmf32_cur, "root", logprob_min,
+                                logprob_sum, n_tokens, t_ms));
+
+      audio.clear();
+      break;
+    }
+  }
+
+  audio.pause();
+
+  return out;
+}
 
 std::string transcribe(whisper_context *ctx, const whisper_params &params,
                        const std::vector<float> &pcmf32,
                        const std::string &grammar_rule, float &logprob_min,
-                       float &logprob_sum, int &n_tokens, int64_t &t_ms)
-{
+                       float &logprob_sum, int &n_tokens, int64_t &t_ms) {
   const auto t_start = std::chrono::high_resolution_clock::now();
 
   logprob_min = 0.0f;
@@ -74,7 +157,7 @@ std::string transcribe(whisper_context *ctx, const whisper_params &params,
   wparams.n_threads = params.n_threads;
 
   wparams.audio_ctx = params.audio_ctx;
-  // wparams.speed_up = params.speed_up;
+  wparams.speed_up = params.speed_up;
 
   wparams.temperature = 0.4f;
   wparams.temperature_inc = 1.0f;
@@ -84,21 +167,19 @@ std::string transcribe(whisper_context *ctx, const whisper_params &params,
 
   wparams.initial_prompt = params.context.data();
 
+  wparams.suppress_regex = params.suppress_regex.c_str();
+
   const auto &grammar_parsed = params.grammar_parsed;
   auto grammar_rules = grammar_parsed.c_rules();
 
-  if (!params.grammar_parsed.rules.empty() && !grammar_rule.empty())
-  {
+  if (!params.grammar_parsed.rules.empty() && !grammar_rule.empty()) {
     if (grammar_parsed.symbol_ids.find(grammar_rule) ==
-        grammar_parsed.symbol_ids.end())
-    {
+        grammar_parsed.symbol_ids.end()) {
       fprintf(stderr,
               "%s: warning: grammar rule '%s' not found - skipping grammar "
               "sampling\n",
               __func__, grammar_rule.c_str());
-    }
-    else
-    {
+    } else {
       wparams.grammar_rules = grammar_rules.data();
       wparams.n_grammar_rules = grammar_rules.size();
       wparams.i_start_rule = grammar_parsed.symbol_ids.at(grammar_rule);
@@ -106,23 +187,20 @@ std::string transcribe(whisper_context *ctx, const whisper_params &params,
     }
   }
 
-  if (whisper_full(ctx, wparams, pcmf32.data(), pcmf32.size()) != 0)
-  {
+  if (whisper_full(ctx, wparams, pcmf32.data(), pcmf32.size()) != 0) {
     return "";
   }
 
   std::string result;
 
   const int n_segments = whisper_full_n_segments(ctx);
-  for (int i = 0; i < n_segments; ++i)
-  {
+  for (int i = 0; i < n_segments; ++i) {
     const char *text = whisper_full_get_segment_text(ctx, i);
 
     result += text;
 
     const int n = whisper_full_n_tokens(ctx, i);
-    for (int j = 0; j < n; ++j)
-    {
+    for (int j = 0; j < n; ++j) {
       const auto token = whisper_full_get_token_data(ctx, i, j);
 
       if (token.plog > 0.0f)
@@ -138,113 +216,4 @@ std::string transcribe(whisper_context *ctx, const whisper_params &params,
              .count();
 
   return result;
-}
-
-void stt_cb_log_disable(enum ggml_log_level, const char *, void *) {}
-
-STT::STT(const char *model) : audio(30 * 1000)
-{
-  // Disable Logging
-  whisper_log_set(stt_cb_log_disable, NULL);
-
-  // whisper init
-  struct whisper_context_params cparams = whisper_context_default_params();
-  cparams.use_gpu = true;
-
-  if (!(ctx = whisper_init_from_file_with_params(model, cparams)))
-  {
-    ax_error(TAG, "failed to create context");
-    return;
-  }
-
-  // init audio
-
-  if (!audio.init(-1, WHISPER_SAMPLE_RATE))
-  {
-    ax_error(TAG, "audio.init() failed");
-    return;
-  }
-
-  ax_verbose(TAG, "initialized");
-}
-
-STT::~STT()
-{
-  whisper_free(ctx);
-  ax_verbose(TAG, "destroyed");
-}
-
-std::string STT::listen()
-{
-  audio.resume();
-
-  whisper_params params;
-  params.language = "en";
-  // params.model
-  params.translate = false;
-  params.use_gpu = true;
-
-  // wait for 1 second to avoid any buffered noise
-  //   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-  sleep(1);
-  audio.clear();
-
-  bool is_running = true;
-  bool have_prompt = false;
-  // bool ask_prompt = true;
-
-  float logprob_min0 = 0.0f;
-  float logprob_min = 0.0f;
-
-  float logprob_sum0 = 0.0f;
-  float logprob_sum = 0.0f;
-
-  int n_tokens0 = 0;
-  int n_tokens = 0;
-
-  std::vector<float> pcmf32_cur;
-  std::vector<float> pcmf32_prompt;
-
-  // main loop
-  while (is_running)
-  {
-    // handle Ctrl + C
-    is_running = sdl_poll_events();
-
-    // delay
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-    audio.get(2000, pcmf32_cur);
-
-    if (::vad_simple(pcmf32_cur, WHISPER_SAMPLE_RATE, 1000, params.vad_thold,
-                     params.freq_thold, params.print_energy))
-    {
-      ax_debug(TAG, "speech detected");
-
-      int64_t t_ms = 0;
-      // we have heard the activation phrase, now detect the commands
-      audio.get(params.command_ms, pcmf32_cur);
-
-      // prepend 3 second of silence
-      pcmf32_cur.insert(pcmf32_cur.begin(), 3.0f * WHISPER_SAMPLE_RATE, 0.0f);
-
-      // prepend the prompt audio
-      pcmf32_cur.insert(pcmf32_cur.begin(), pcmf32_prompt.begin(),
-                        pcmf32_prompt.end());
-
-      const auto txt =
-          ::trim(::transcribe(ctx, params, pcmf32_cur, "root", logprob_min,
-                              logprob_sum, n_tokens, t_ms));
-
-      const float p = 100.0f * std::exp(logprob_min);
-
-      audio.pause();
-
-      return txt;
-    }
-
-    audio.clear();
-  }
-
-  return 0;
 }

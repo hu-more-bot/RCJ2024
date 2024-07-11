@@ -8,18 +8,24 @@ This code runs on a [HP Victus 16](https://www.hp.com/us-en/shop/mdp/victus/vict
 
 ### Setup
 
-Install Required Packages:
+Init Git LFS
 ```bash
-sudo apt install libopenal1 libespeak-ng-dev
+sudo apt install git-lfs
+git lfs install
 ```
 
-Download Binary Libraries to ./lib
-```url
-https://drive.google.com/drive/folders/1ZaUxoivTj0Bs7TaHu4srhAd5RIbk3g0t?usp=sharing
+Clone Repo
+```bash
+git clone https://github.com/hu-more-bot/rcj2024
+```
+
+Install Required Packages:
+```bash
+sudo apt install libopenal1
 ```
 
 ### Libraries
-- LLM: [ONNX Runtime GenAI](https://github.com/microsoft/onnxruntime-genai/)
+- LLM: [ONNX Runtime GenAI](https://github.com/microsoft/onnxruntime-genai)
 - SD: [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)
 - TTS: [piper](https://github.com/rhasspy/piper)
 - STT: [whisper.cpp](https://github.com/ggerganov/whisper.cpp)

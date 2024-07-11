@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-option(RCJ_BACKEND_CUDA "build with CUDA support" ON)
+option(RCJ_BACKEND_CUDA "build with CUDA support" OFF)
 
 # Source Files
 set(SOURCES
@@ -30,6 +30,7 @@ set(LIBRARIES
     # ggml
 
     whisper
+    # ggml
     common
     common-sdl
     SDL2

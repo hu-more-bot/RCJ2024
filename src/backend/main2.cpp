@@ -1,10 +1,20 @@
-#pragma once
+// Voice assistant example
+//
+// Speak short text commands to the microphone.
+// This program will detect your voice command and convert them to text.
+//
+// ref: https://github.com/ggerganov/whisper.cpp/issues/171
+//
 
-#include "common-sdl.h"
-#include "grammar-parser.h"
-
-#include "common.h"
+#include <cassert>
+#include <cstdio>
+#include <fstream>
+#include <map>
+#include <mutex>
+#include <regex>
+#include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 // command-line parameters
@@ -43,16 +53,10 @@ struct whisper_params {
   std::string suppress_regex;
 };
 
-// Wrapper Class for the whisper.cpp library
-class STT {
-public:
-  STT(const char *model);
-  ~STT();
+int main(int argc, char **argv) {
 
-  std::string listen();
+  whisper_print_timings(ctx);
+  whisper_free(ctx);
 
-private:
-  audio_async audio;
-  whisper_params params;
-  struct whisper_context *ctx{};
-};
+  return ret_val;
+}
