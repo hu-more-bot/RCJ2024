@@ -8,7 +8,8 @@
 
 #define TAG "llm"
 
-struct LLMdata {
+struct LLMdata
+{
   OgaHandle handle;
 
   std::unique_ptr<OgaModel> model;
@@ -18,29 +19,34 @@ struct LLMdata {
   std::string text;
 };
 
-LLM::LLM(const char *modelPath, const char *promptPath) {
-  if (!(llm = new LLMdata)) {
+LLM::LLM(const char *modelPath, const char *promptPath)
+{
+  if (!(llm = new LLMdata))
+  {
     ax_error(TAG, "failed to allocate memory");
     return;
   }
 
   llm->model = OgaModel::Create(modelPath);
 
-  if (!llm->model) {
+  if (!llm->model)
+  {
     ax_error(TAG, "failed to create model");
     return;
   }
 
   llm->tokenizer = OgaTokenizer::Create(*llm->model);
 
-  if (!llm->tokenizer) {
+  if (!llm->tokenizer)
+  {
     ax_error(TAG, "failed to create tokenizer");
     return;
   }
 
   llm->tokenizer_stream = OgaTokenizerStream::Create(*llm->tokenizer);
 
-  if (!llm->tokenizer_stream) {
+  if (!llm->tokenizer_stream)
+  {
     ax_error(TAG, "failed to create tokenizer stream");
     return;
   }
@@ -49,7 +55,8 @@ LLM::LLM(const char *modelPath, const char *promptPath) {
   /* Load Prompt */ {
     // Open File
     FILE *f = NULL;
-    if (!(f = fopen(promptPath, "r"))) {
+    if (!(f = fopen(promptPath, "r")))
+    {
       ax_error(TAG, "failed to open file");
       return;
     }
@@ -62,7 +69,8 @@ LLM::LLM(const char *modelPath, const char *promptPath) {
     // Read File
     prompt = (char *)malloc(sizeof(char) * size);
 
-    if (!fread(prompt, size, 1, f)) {
+    if (!fread(prompt, size, 1, f))
+    {
       ax_error(TAG, "failed to read prompt");
       return;
     }
@@ -76,7 +84,8 @@ LLM::LLM(const char *modelPath, const char *promptPath) {
 LLM::~LLM() { delete llm; }
 
 std::string LLM::reply(std::string input,
-                       std::function<void(std::string)> onNewToken) {
+                       std::function<void(std::string)> onNewToken)
+{
   std::string out;
 
   llm->text += "<|" + config.user_name + "|>\n" + input + "<|end|>\n<|" +
@@ -91,7 +100,8 @@ std::string LLM::reply(std::string input,
 
   auto generator = OgaGenerator::Create(*llm->model, *params); // asd
 
-  while (!generator->IsDone()) {
+  while (!generator->IsDone())
+  {
     generator->ComputeLogits();
     generator->GenerateNextToken();
 

@@ -23,7 +23,7 @@ public:
     std::string ai_name = "rick"; //"ai painter";
     std::string user_name = "interviewer";
 
-    unsigned int token_size = 4096;
+    unsigned int token_size = 1024;
   } config;
 
 private:

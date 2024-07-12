@@ -7,12 +7,14 @@
 
 #define TAG "sd"
 
-SD::SD(const char *model) {
+SD::SD(const char *model)
+{
   ctx =
-      new_sd_ctx(model, "", "", "", "", "", "", false, false, true, -1,
+      new_sd_ctx(model, "", "", "", "", "", "", false, false, false, -1,
                  SD_TYPE_COUNT, STD_DEFAULT_RNG, DEFAULT, false, false, false);
 
-  if (ctx == NULL) {
+  if (ctx == NULL)
+  {
     ax_error(TAG, "failed to create context");
     return;
   }
@@ -20,7 +22,8 @@ SD::SD(const char *model) {
   ax_verbose(TAG, "initialized");
 }
 
-SD::~SD() {
+SD::~SD()
+{
   free(result->data);
   free(result);
 
@@ -29,8 +32,10 @@ SD::~SD() {
   ax_verbose(TAG, "destroyed");
 }
 
-bool SD::txt() {
-  if (result) {
+bool SD::txt()
+{
+  if (result)
+  {
     free(result->data);
     free(result);
     result = NULL;
@@ -43,7 +48,8 @@ bool SD::txt() {
                    NULL, // control image
                    config.control_strength, 0, false, "");
 
-  if (result) {
+  if (result)
+  {
     ax_debug(TAG, "generted image");
     return true;
   }
@@ -52,8 +58,10 @@ bool SD::txt() {
   return false;
 }
 
-bool SD::img() {
-  if (result) {
+bool SD::img()
+{
+  if (result)
+  {
     free(result->data);
     free(result);
     result = NULL;
@@ -66,7 +74,8 @@ bool SD::img() {
                    NULL, // control image
                    config.control_strength, 0, false, "");
 
-  if (result) {
+  if (result)
+  {
     ax_debug(TAG, "generted image");
     return true;
   }

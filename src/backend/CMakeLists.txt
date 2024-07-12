@@ -8,7 +8,7 @@ set(SOURCES
 
     # AI
     src/llm.cpp
-    # src/sd.cpp
+    src/sd.cpp
 
     src/stt.cpp
     src/tts.cpp
@@ -23,11 +23,11 @@ set(SOURCES
 set(LIBRARIES
     # llm
     onnxruntime-genai
+
     onnxruntime
 
     # sd
-    # stable-diffusion
-    # ggml
+    stable-diffusion
 
     whisper
     # ggml
@@ -48,7 +48,7 @@ set(LIBRARIES
 project(backend)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
-target_link_libraries(${PROJECT_NAME} ${LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBRARIES})
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/include)
 
