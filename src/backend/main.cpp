@@ -19,15 +19,14 @@
 
 #define MODEL_LLM "MODEL_PHI3"
 #define MODEL_SD "MODEL_SDv2_1"
-#define MODEL_WHISPER "MODEL_WHISPER_BASE"
-#define MODEL_PIPER "MODEL_PIPER_HFC_MALE"
+#define MODEL_WHISPER "MODEL_WHISPER_TINY"
+#define MODEL_PIPER "MODEL_PIPER_RYAN"
 
 #define AUDIO_DEVICE NULL
 
 volatile bool isRunning = true;
 
-struct Image
-{
+struct Image {
   unsigned char *data;
   uint16_t width, height;
   uint8_t channels;
@@ -35,10 +34,18 @@ struct Image
   std::string path;
 };
 
+typedef std::queue<Image *> ImageQueue;
+
+// Process Command
+void process(ImageQueue &img, Server &server, const char *command);
+
+// Play Audio Buffer
+void play(axMixer mixer, std::vector<int16_t> buffer);
+
+// Sleep
 void sleep(float amount);
 
-int main()
-{
+int main() {
   // Load Models
   LLM llm(getenv(MODEL_LLM), "../prompt.txt");
   // SD sd(getenv(MODEL_SD));
@@ -53,12 +60,10 @@ int main()
 
   // Serial serial("/dev/ttyACM0");
 
-  // Image Queue
-  std::queue<Image *> image;
+  ImageQueue image;
 
   // Start Server
-  Server server(8000, [&](Server &server, const Server::Event &event)
-                {
+  Server server(8000, [&](Server &server, const Server::Event &event) {
     switch (event.type) {
     case Server::Event::MESSAGE: {
       if (!strncmp(event.data, "IMAGE", 5)) {
@@ -97,12 +102,12 @@ int main()
 
     default:
       break;
-    } });
+    }
+  });
 
   ax_debug("main", "started server");
 
-  std::thread painter([&]
-                      {
+  std::thread painter([&] {
     Image *img = NULL;
     while (isRunning) {
       // free previous image
@@ -115,6 +120,9 @@ int main()
       if (!image.empty()) {
         img = image.front();
         image.pop();
+
+        ax_debug("main", "removed image from queue (new size: %zu)",
+                 image.size());
 
         if (img->path.empty())
           continue;
@@ -144,12 +152,12 @@ int main()
         // channels);
       } else
         sleep(0.3f);
-    } });
+    }
+  });
 
   ax_debug("main", "started painter");
 
-  while (true)
-  {
+  while (true) {
     // Get User In
     std::string text = stt.listen();
     // printf("You:\n\e[0;92m");
@@ -167,76 +175,38 @@ int main()
     // Generate Response
     printf("AI:\n\e[0;94m");
 
-    // Lambda to process command
-    auto process = [&](const char *command)
-    {
-      if (!strncmp(command, "PAINT", 5))
-      {
-        // Add image prompt to queue
-        Image *img = new Image;
-        img->data = NULL;
-        img->width = img->height = 0;
-        img->channels = 0;
-        img->path = std::string(command + 7);
-        image.push(img);
-        ax_debug("main", "added to image queue (new size: %zu)", image.size());
-      }
-      else if (!strncmp(command, "PORTRAIT", 8))
-      {
-        //
-      }
-      else
-      {
-        //
-      }
-    };
-
     // Generate Text
     unsigned int opened = 0;
-    std::string message, command;
+    std::string message = "", command = "";
+    llm.reply(text, [&](std::string token) {
+      // parse tokens -> message & command(s)
+      for (char c : token) {
+        if (c == '[') {
+          opened++;
+        } else if (c == ']') {
+          if (opened > 0)
+            opened--;
+          else
+            continue;
 
-    llm.reply(text, [&](std::string token)
-              {
-      // parse commands
-      if (token[0] == '[')
-        opened++;
-      else if (token[0] == ']') {
-        if (opened > 0)
-          opened--;
-        else
-          return;
-
-        if (opened == 0) {
-          process(command.c_str());
-          command = "";
-        }
-      } else {
-        if (opened > 0)
-          command += token;
-        else
-          message += token;
+          if (opened == 0) {
+            // process command
+            process(image, server, command.c_str());
+            command = "";
+          }
+        } else
+          (opened ? command : message) += c;
       }
-      // TODO fix
-      printf("%s", token.c_str());
-      fflush(stdout); });
+    });
+
     printf("\e[0;39m\n");
 
     // Generate Audio
     ax_debug("main", "%s", message.c_str());
-    auto buf = tts.say(message);
-
-    // Play Audio
-    auto id = axMixerLoad(mixer, 1, 22050, buf.size(), buf.data());
-    axMixerPlay(mixer, id, 1);
-    axMixerUnload(mixer, id);
+    play(mixer, tts.say(message));
   }
 
-  auto buf = tts.say("*gots shot in the head*");
-
-  // Play Audio
-  auto id = axMixerLoad(mixer, 1, 22050, buf.size(), buf.data());
-  axMixerPlay(mixer, id, 1);
-  axMixerUnload(mixer, id);
+  play(mixer, tts.say("*gots shot in the head*"));
 
   ax_debug("main", "cleaning up");
 
@@ -251,8 +221,32 @@ int main()
   return 0;
 }
 
-void sleep(float amount)
-{
+void process(ImageQueue &image, Server &server, const char *command) {
+  if (!strncmp(command, "PAINT", 5)) {
+    // Add image prompt to queue
+    Image *img = new Image;
+    img->data = NULL;
+    img->width = img->height = 0;
+    img->channels = 0;
+    img->path = std::string(command + 7);
+    image.push(img);
+    ax_debug("main", "added to image queue (new size: %zu)", image.size());
+  } else if (!strncmp(command, "PORTRAIT", 8)) {
+    // Send Image Request
+    const char message[5] = {'I', 'M', 'R', 'E', 'Q'};
+    server.send(-1, (void *)message, sizeof(message));
+    // TODO send prompt or smthing
+  } else
+    ax_warning("main", "unknown command");
+}
+
+void play(axMixer mixer, std::vector<int16_t> buffer) {
+  auto id = axMixerLoad(mixer, 1, 22050, buffer.size(), buffer.data());
+  axMixerPlay(mixer, id, 1);
+  axMixerUnload(mixer, id);
+}
+
+void sleep(float amount) {
   float start = axClockNow();
   while (axClockNow() < start + amount)
     ;
