@@ -38,8 +38,9 @@ sudo apt install libopenal1
 
 ### Communication
 Sends:
+- **IMREQ**: id (c[5]); image request
 - **IMAGE**: id (c[5]), width (u16), height (u16), channels (u8), data (uc[w * h * ch]); generated image
 
 Accepts:
-- **IMAGE**: id (c[5]), width (u16), height (u16), channels (u8), data (uc[w * h * ch]); picture of person
 - **PERSON**: id (c[6]), position (f); person location
+- **IMAGE**: id (c[5]), width (u16), height (u16), channels (u8), data (uc[w * h * ch]); picture of person

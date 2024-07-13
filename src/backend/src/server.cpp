@@ -19,7 +19,8 @@
 
 Server::Server(
     int port,
-    std::function<void(Server &server, const Event &event)> callback) {
+    std::function<void(Server &server, const Event &event)> callback)
+{
   // Open Socket
   if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     throw std::runtime_error("failed to open socket");
@@ -30,11 +31,13 @@ Server::Server(
   serv_addr.sin_addr.s_addr = INADDR_ANY;
 
   bool success = false;
-  for (int i = 0; i < PORT_ATTEMPTS; i++) {
+  for (int i = 0; i < PORT_ATTEMPTS; i++)
+  {
     serv_addr.sin_port = htons(port + i);
     if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
       printf("failed to bind port %i\n", port + i);
-    else {
+    else
+    {
       success = true;
       break;
     }
@@ -44,16 +47,19 @@ Server::Server(
     throw std::runtime_error("failed to bind port");
 
   // Start Accepter Thread
-  accepter = (std::thread)[&] {
+  accepter = (std::thread)[&]
+  {
     listen(sockfd, 5);
 
-    while (running) {
+    while (running)
+    {
       // Accept Connection
       struct sockaddr_in client;
       socklen_t len = sizeof(client);
       int new_socket = accept(sockfd, (struct sockaddr *)&client, &len);
 
-      if (new_socket < 0) {
+      if (new_socket < 0)
+      {
         fprintf(stderr, "Failed to accept connection\n");
         continue;
       }
@@ -71,14 +77,18 @@ Server::Server(
   };
 
   // Start Listener Thread
-  listener = (std::thread)[&] {
+  listener = (std::thread)[&]
+  {
     int len;
     char buffer[256];
 
-    while (running && clients.size() > 0) {
-      for (auto &[sockfd, upd] : clients) {
+    while (running && clients.size() > 0)
+    {
+      for (auto &[sockfd, upd] : clients)
+      {
         bzero(buffer, 256);
-        if ((len = read(sockfd, buffer, sizeof(buffer))) < 0) {
+        if ((len = read(sockfd, buffer, sizeof(buffer))) < 0)
+        {
           sleep(1);
           continue;
         }
@@ -89,11 +99,13 @@ Server::Server(
         buffer[len] = 0;
 
         // handle exit
-        if (!strncasecmp(buffer, "exit", 4)) {
+        if (!strncasecmp(buffer, "exit", 4))
+        {
           close(sockfd);
           clients.erase(sockfd);
           continue;
         }
+        printf("asd\n");
 
         Event event;
         event.type = Event::MESSAGE;
@@ -126,7 +138,8 @@ Server::Server(
   // };
 }
 
-Server::~Server() {
+Server::~Server()
+{
   running = false;
   accepter.join();
 
@@ -139,11 +152,15 @@ Server::~Server() {
   close(sockfd);
 }
 
-void Server::send(int sockfd, void *data, unsigned long size) {
-  if (sockfd < 0) {
+void Server::send(int sockfd, void *data, unsigned long size)
+{
+  if (sockfd < 0)
+  {
     for (auto [s, _] : clients)
       send(s, data, size);
-  } else {
+  }
+  else
+  {
     int n = write(sockfd, data, size);
     if (n != size)
       fprintf(stderr, "%s: failed to send message\n", __func__);
