@@ -2,6 +2,7 @@
 
 #include "Artifex/renderer.h"
 #include "callbacks.h"
+#include "client.h"
 #include "image.h"
 #include "render.h"
 
@@ -10,9 +11,12 @@ int main() {
 
   // Initialize
   axCameraCreate(&session.camera, 640, 480, 30);
-  yoloCreate(&session.yolo, "../models/yolov7-tiny.onnx");
+  session.yolo = NULL;
+  // yoloCreate(&session.yolo, getenv("MODEL_YOLOv10m"),
+  //  getenv("MODEL_YOLOv10_PARAMS"));
 
   clientCreate(&session.client);
+  // clientOpen(session.client, "10.42.0.1", 8000);
 
   axWindowCreate(&session.window[0], "Face", 720, 480);
   axWindowCreate(&session.window[1], "Chest", 720, 480);
@@ -75,7 +79,7 @@ int main() {
 
     // Render Chest UI
     struct axRendererDrawInfo drawInfo;
-    drawInfo.size = (axVector){0.4, 0.6};
+    drawInfo.size = (axVector){0.9, 1.6};
     drawInfo.style = image == 0 ? 0 : 2;
     drawInfo.texture = image;
     axRendererDraw(session.renderer[1], &drawInfo);
@@ -95,7 +99,7 @@ int main() {
 
   clientDestroy(&session.client);
 
-  yoloDestroy(&session.yolo);
+  // yoloDestroy(&session.yolo);
   axCameraDestroy(&session.camera);
 
   ax_verbose("main", "cleanup done, exiting");

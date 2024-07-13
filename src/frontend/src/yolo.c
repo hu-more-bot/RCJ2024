@@ -14,6 +14,9 @@ struct Yolo {
   OrtEnv *env;
   OrtSessionOptions *options;
   OrtSession *session;
+
+  size_t len;
+  char **params;
 };
 
 int yoloIsOK(yolo_t yolo) {
@@ -23,7 +26,7 @@ int yoloIsOK(yolo_t yolo) {
   return 1;
 }
 
-int yoloCreate(yolo_t *yolo, const char *path) {
+int yoloCreate(yolo_t *yolo, const char *path, const char *paramsPath) {
   if (!yolo)
     return 1;
 
@@ -69,6 +72,45 @@ int yoloCreate(yolo_t *yolo, const char *path) {
     return 1;
   }
 
+  // Load Params
+  FILE *f = fopen(paramsPath, "r");
+  if (!f) {
+    ylo->ort->ReleaseSession(ylo->session);
+    ylo->ort->ReleaseSessionOptions(ylo->options);
+    ylo->ort->ReleaseEnv(ylo->env);
+    free(*yolo);
+    *yolo = NULL;
+
+    ax_error(TAG, "failed to open config file");
+    return 1;
+  }
+
+  char line[32];
+  fgets(line, sizeof(line), f);
+
+  // Read length
+  if (sscanf(line, "%zu", &ylo->len) != 1 || ylo->len == 0) {
+    fclose(f);
+    ylo->ort->ReleaseSession(ylo->session);
+    ylo->ort->ReleaseSessionOptions(ylo->options);
+    ylo->ort->ReleaseEnv(ylo->env);
+    free(*yolo);
+    *yolo = NULL;
+
+    ax_error(TAG, "failed to read config file");
+    return 1;
+  }
+
+  ylo->params = malloc(sizeof(char *) * ylo->len);
+
+  for (int i = 0; i < ylo->len; i++) {
+    ylo->params[i] = malloc(32);
+
+    // read line
+    fgets(line, sizeof(line), f);
+    strcpy(ylo->params[i], line);
+  }
+
   ax_verbose(TAG, "initialized");
   return 0;
 }
@@ -76,6 +118,10 @@ int yoloCreate(yolo_t *yolo, const char *path) {
 void yoloDestroy(yolo_t *yolo) {
   if (!yolo || !*yolo)
     return;
+
+  for (size_t i = 0; i < (*yolo)->len; i++)
+    free((*yolo)->params[i]);
+  free((*yolo)->params);
 
   (*yolo)->ort->ReleaseSessionOptions((*yolo)->options);
   (*yolo)->ort->ReleaseSession((*yolo)->session);
@@ -115,8 +161,6 @@ unsigned long yoloSize(yolo_t yolo) {
 
   return dims[size - 1];
 }
-
-const char *yolo__class_names[];
 
 unsigned long yoloDetect(yolo_t yolo, float *data, struct Result **results) {
   if (!results) {
@@ -201,7 +245,12 @@ unsigned long yoloDetect(yolo_t yolo, float *data, struct Result **results) {
     (*results)[i].w = ptr[3];
     (*results)[i].h = ptr[4];
     (*results)[i].index = ptr[5];
-    (*results)[i].name = yolo__class_names[(*results)[i].index];
+
+    if ((*results)[i].index < yolo->len)
+      (*results)[i].name = yolo->params[(*results)[i].index];
+    else
+      (*results)[i].name = "";
+
     (*results)[i].confidence = ptr[6];
 
     ptr += elements;
@@ -213,32 +262,3 @@ unsigned long yoloDetect(yolo_t yolo, float *data, struct Result **results) {
 
   return count;
 }
-
-const char *yolo__class_names[] = {
-    "person",        "bicycle",      "car",
-    "motorcycle",    "airplane",     "bus",
-    "train",         "truck",        "boat",
-    "traffic light", "fire hydrant", "stop sign",
-    "parking meter", "bench",        "bird",
-    "cat",           "dog",          "horse",
-    "sheep",         "cow",          "elephant",
-    "bear",          "zebra",        "giraffe",
-    "backpack",      "umbrella",     "handbag",
-    "tie",           "suitcase",     "frisbee",
-    "skis",          "snowboard",    "sports ball",
-    "kite",          "baseball bat", "baseball glove",
-    "skateboard",    "surfboard",    "tennis racket",
-    "bottle",        "wine glass",   "cup",
-    "fork",          "knife",        "spoon",
-    "bowl",          "banana",       "apple",
-    "sandwich",      "orange",       "broccoli",
-    "carrot",        "hot dog",      "pizza",
-    "donut",         "cake",         "chair",
-    "couch",         "potted plant", "bed",
-    "dining table",  "toilet",       "tv",
-    "laptop",        "mouse",        "remote",
-    "keyboard",      "cell phone",   "microwave",
-    "oven",          "toaster",      "sink",
-    "refrigerator",  "book",         "clock",
-    "vase",          "scissors",     "teddy bear",
-    "hair drier",    "toothbrush"};

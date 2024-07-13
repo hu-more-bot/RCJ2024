@@ -23,7 +23,7 @@ struct Result {
 int yoloIsOK(yolo_t yolo);
 
 // Create YOLO
-int yoloCreate(yolo_t *yolo, const char *path);
+int yoloCreate(yolo_t *yolo, const char *path, const char *paramsPath);
 
 // Destroy YOLO
 void yoloDestroy(yolo_t *yolo);

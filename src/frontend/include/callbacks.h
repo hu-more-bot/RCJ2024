@@ -61,59 +61,65 @@ void framecb(struct axCameraFrame *frame, void *user_ptr) {
   }
 
   // Run Inference
-  struct Result *result;
-  int count = yoloDetect(session->yolo, data, &result);
+  struct Result *result = NULL;
+  // int count = yoloDetect(session->yolo, data, &result);
 
   // TODO rethink & make better
-  float max = 0;
-  int id = -1;
-  float pos[2], size[2];
-  for (int i = 0; i < count; i++) {
-    float w = result[i].w, h = result[i].h;
-    float x = result[i].x, y = result[i].y;
-    float area = w * h;
+  // float max = 0;
+  // int id = -1;
+  // float pos[2], size[2];
+  // for (int i = 0; i < count; i++) {
+  //   float w = result[i].w, h = result[i].h;
+  //   float x = result[i].x, y = result[i].y;
+  //   float area = w * h;
 
-    if (result[i].index == 0) {
-      if (area > max) {
-        max = area;
-        id = i;
-        pos[0] = x, pos[1] = y;
-        size[0] = w, size[1] = h;
-      }
-    }
-  }
+  //   if (result[i].index == 0) {
+  //     if (area > max) {
+  //       max = area;
+  //       id = i;
+  //       pos[0] = x, pos[1] = y;
+  //       size[0] = w, size[1] = h;
+  //     }
+  //   }
+  // }
 
-  // if has person, send pos & cropped
-  if (id >= 0) {
-    // set & send relative position
-    session->person =
-        PERCENT((pos[0] + size[0] / 2.0f) / frame->width) * -2.0f + 1;
+  // // if has person, send pos & cropped
+  // if (id >= 0) {
+  //   // set & send relative position
+  //   session->person =
+  //       PERCENT((pos[0] + size[0] / 2.0f) / frame->width) * -2.0f + 1;
 
-    struct {
-      const char id[6];
-      float person;
-    } msg = {"PERSON", session->person};
+  //   struct {
+  //     const char id[6];
+  //     float person;
+  //   } msg = {"PERSON", session->person};
 
-    clientSend(session->client, (void *)&msg, sizeof(msg));
+  //   clientSend(session->client, (void *)&msg, sizeof(msg));
 
-    // Send Image (if requested)
-    if (session->image.request) {
-      struct {
-        const char id[5];
-        uint16_t width, height;
-        uint8_t channels;
-        unsigned char cropped[IM_RES_W * IM_RES_H * 3];
-      } msg = {"IMAGE", IM_RES_W, IM_RES_H, 3};
+  //   // Send Image (if requested)
+  //   if (session->image.request) {
+  //     struct {
+  //       const char id[5];
+  //       uint16_t width, height;
+  //       uint8_t channels;
+  //       unsigned char cropped[IM_RES_W * IM_RES_H * 3];
+  //     } msg = {"IMAGE", IM_RES_W, IM_RES_H, 3};
 
-      // crop image
-      cropImage(frame->data, frame->width, frame->height, msg.cropped, IM_RES_W,
-                IM_RES_H, pos[0] + size[0] / 2.0f, 320);
+  //     // crop image
+  //     cropImage(frame->data, frame->width, frame->height, msg.cropped,
+  //     IM_RES_W,
+  //               IM_RES_H, pos[0] + size[0] / 2.0f, 320);
 
-      // send image data
-      clientSend(session->client, (void *)&msg, sizeof(msg));
+  //     // send image data
+  //     clientSend(session->client, (void *)&msg, sizeof(msg));
 
-      session->image.request = 0;
-    }
+  //     session->image.request = 0;
+  //   }
+  // }
+
+  if (session->image.request) {
+    session->image.request = 0;
+    ax_debug("callback", "image request done\n");
   }
 
   free(result);
