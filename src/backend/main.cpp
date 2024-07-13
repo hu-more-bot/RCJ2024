@@ -17,9 +17,9 @@
 #include <queue>
 #include <string>
 
-#define MODEL_LLM "MODEL_PHI3"
+#define MODEL_LLM "MODEL_PHI3cpu"
 #define MODEL_SD "MODEL_SDv2_1"
-#define MODEL_WHISPER "MODEL_WHISPER_TINY"
+#define MODEL_WHISPER "MODEL_WHISPER_BASE"
 #define MODEL_PIPER "MODEL_PIPER_RYAN"
 
 #define AUDIO_DEVICE NULL
@@ -51,12 +51,20 @@ void sleep(float amount);
 
 int main()
 {
+  Server s(8000, [&](Server &server, const Server::Event &event)
+           {
+    if (event.type == Server::Event::MESSAGE)
+      printf("%.*s\n", (int)event.len, event.data); });
+
+  while (1)
+    ;
+
   // Load Models
   LLM llm(getenv(MODEL_LLM), "../prompt.txt");
   // SD sd(getenv(MODEL_SD));
   SD sd("/home/booger_aids/Documents/models/sd.gguf");
-  // sd.config.width = 768;
-  // sd.config.height = 1344;
+  // sd.config.width = 256;
+  // sd.config.height = 256;
 
   STT stt(getenv(MODEL_WHISPER));
   TTS tts(getenv(MODEL_PIPER), getenv("ESPEAK_NG_DATA"));
@@ -150,19 +158,17 @@ int main()
             continue;
         }
 
-
-        // STBIWDEF int stbi_write_png(char const *filename, int w, int h, int comp, const void *data, int stride_in_bytes);
-        stbi_write_png("out.png", sd.result->width, sd.result->height, 3, sd.result->data, sd.config.width * 3);
+        // // STBIWDEF int stbi_write_png(char const *filename, int w, int h, int comp, const void *data, int stride_in_bytes);
+        // stbi_write_png("out.png", sd.result->width, sd.result->height, 3, sd.result->data, sd.config.width * 3);
 
         // TODO send image
 
-        // const char id[5] = {'I', 'M', 'G', 'I', 'N'};
-        // uint16_t width = sd.config.width, height = sd.config.height;
-        // uint8_t channels = 3;
-        // unsigned char data[width * height * channels];
+        const char id[5] = {'I', 'M', 'G', 'I', 'N'};
+        uint16_t width = sd.config.width, height = sd.config.height;
+        uint8_t channels = 3;
+        unsigned char data[width * height * channels];
 
-        // server.send(-1, (void *)id, 5 + 2 + 2 + 1 + width * height *
-        // channels);
+        server.send(-1, (void *)id, 5 + 2 + 2 + 1 + width * height * channels);
       } else
         sleep(0.3f);
     } });
@@ -179,7 +185,7 @@ int main()
     // fgets(text, sizeof(text), stdin);
     // printf("\e[39m");
 
-    if (!strncasecmp(text.c_str(), "headshot", 8))
+    if (!strncasecmp(text.c_str(), "headshot", 8) || !strncasecmp(text.c_str(), "bang", 4) || !strncasecmp(text.c_str(), "(gunshots)", 11))
       break;
 
     // printf("%s\n", text.c_str());
