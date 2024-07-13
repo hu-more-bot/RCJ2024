@@ -66,76 +66,75 @@ Server::Server(
 
       printf("new connection\n");
 
-      clients[new_socket] = time(0);
+      // Listener
+      clients[new_socket] = {
+          time(0), new_socket, (std::thread)[&]{int len;
+      char buffer[256];
 
-      Event event;
-      event.type = Event::CONNECTION;
-      event.sockfd = new_socket;
-
-      callback(*this, event);
-    }
-  };
-
-  // Start Listener Thread
-  listener = (std::thread)[&]
-  {
-    int len;
-    char buffer[256];
-
-    while (running && clients.size() > 0)
-    {
-      for (auto &[sockfd, upd] : clients)
+      while (running && clients.size() > 0)
       {
-        bzero(buffer, 256);
-        if ((len = read(sockfd, buffer, sizeof(buffer))) < 0)
+        for (auto &[sockfd, cli] : clients)
         {
-          sleep(1);
-          continue;
+          bzero(buffer, 256);
+          if ((len = read(sockfd, buffer, sizeof(buffer))) < 0)
+          {
+            sleep(1);
+            continue;
+          }
+
+          cli.activity = time(0);
+
+          len--;
+          buffer[len] = 0;
+
+          // handle exit
+          if (!strncasecmp(buffer, "exit", 4))
+          {
+            close(sockfd);
+            clients.erase(sockfd);
+            continue;
+          }
+          printf("asd\n");
+
+          Event event;
+          event.type = Event::MESSAGE;
+          event.sockfd = sockfd;
+          event.data = buffer;
+          event.len = len;
+
+          callback(*this, event);
         }
-
-        upd = time(0);
-
-        len--;
-        buffer[len] = 0;
-
-        // handle exit
-        if (!strncasecmp(buffer, "exit", 4))
-        {
-          close(sockfd);
-          clients.erase(sockfd);
-          continue;
-        }
-        printf("asd\n");
-
-        Event event;
-        event.type = Event::MESSAGE;
-        event.sockfd = sockfd;
-        event.data = buffer;
-        event.len = len;
-
-        callback(*this, event);
       }
     }
   };
 
-  // timeouter = (std::thread)[&]
-  // {
-  //   // TODO maybe move to listener thread
-  //   while (running && clients.size() > 0)
-  //   {
-  //     for (auto c : clients)
-  //     {
-  //       if (c.time + TIMEOUT < time(0))
-  //       {
-  //         printf("connection timed out\n");
-  //         close(c.sockfd);
-  //         clients.erase(c);
-  //       }
-  //     }
+  Event event;
+  event.type = Event::CONNECTION;
+  event.sockfd = new_socket;
 
-  //     sleep(1);
-  //   }
-  // };
+  callback(*this, event);
+}
+}
+;
+
+// timeouter = (std::thread)[&]
+// {
+//   // TODO maybe move to listener thread
+//   while (running && clients.size() > 0)
+//   {
+//     for (auto c : clients)
+//     {
+//       if (c.time + TIMEOUT < time(0))
+//       {
+//         printf("connection timed out\n");
+//         close(c.sockfd);
+//         clients.erase(c);
+//       }
+//     }
+
+//     sleep(1);
+//   }
+// };
 }
 
 Server::~Server()
