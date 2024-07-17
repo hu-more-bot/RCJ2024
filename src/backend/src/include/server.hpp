@@ -6,14 +6,11 @@
 #include <thread>
 
 // Simple Linux TCP Server
-class Server
-{
+class Server {
 public:
-  struct Event
-  {
+  struct Event {
     // Event Types
-    enum
-    {
+    enum {
       CONNECTION,
       DISCONNECTION,
       TIMEOUT,
@@ -40,13 +37,13 @@ private:
   bool running;
   std::thread accepter, timeouter;
 
-  struct Client
-  {
-    time_t activity;
-    int fd;
+  // struct Client
+  // {
+  //   time_t activity;
+  //   int fd;
 
-    std::thread listener;
-  };
+  //   std::thread listener;
+  // };
 
-  std::unordered_map<int, Client> clients;
+  // std::unordered_map<int, Client> clients;
 };

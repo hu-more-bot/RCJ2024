@@ -19,8 +19,7 @@
 
 Server::Server(
     int port,
-    std::function<void(Server &server, const Event &event)> callback)
-{
+    std::function<void(Server &server, const Event &event)> callback) {
   // Open Socket
   if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     throw std::runtime_error("failed to open socket");
@@ -31,13 +30,11 @@ Server::Server(
   serv_addr.sin_addr.s_addr = INADDR_ANY;
 
   bool success = false;
-  for (int i = 0; i < PORT_ATTEMPTS; i++)
-  {
+  for (int i = 0; i < PORT_ATTEMPTS; i++) {
     serv_addr.sin_port = htons(port + i);
     if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
       printf("failed to bind port %i\n", port + i);
-    else
-    {
+    else {
       success = true;
       break;
     }
@@ -47,119 +44,114 @@ Server::Server(
     throw std::runtime_error("failed to bind port");
 
   // Start Accepter Thread
-  accepter = (std::thread)[&]
-  {
-    listen(sockfd, 5);
+  // accepter = (std::thread)[&]
+  // {
+  //   listen(sockfd, 5);
 
-    while (running)
-    {
-      // Accept Connection
-      struct sockaddr_in client;
-      socklen_t len = sizeof(client);
-      int new_socket = accept(sockfd, (struct sockaddr *)&client, &len);
+  //   while (running)
+  //   {
+  //     // Accept Connection
+  //     struct sockaddr_in client;
+  //     socklen_t len = sizeof(client);
+  //     int new_socket = accept(sockfd, (struct sockaddr *)&client, &len);
 
-      if (new_socket < 0)
-      {
-        fprintf(stderr, "Failed to accept connection\n");
-        continue;
-      }
+  //     if (new_socket < 0)
+  //     {
+  //       fprintf(stderr, "Failed to accept connection\n");
+  //       continue;
+  //     }
 
-      printf("new connection\n");
+  //     printf("new connection\n");
 
-      // Listener
-      clients[new_socket] = {
-          time(0), new_socket, (std::thread)[&]{int len;
-      char buffer[256];
+  //     // Listener
+  //     clients[new_socket] = {
+  //         time(0), new_socket, (std::thread)[&]{int len;
+  //     char buffer[256];
 
-      while (running && clients.size() > 0)
-      {
-        for (auto &[sockfd, cli] : clients)
-        {
-          bzero(buffer, 256);
-          if ((len = read(sockfd, buffer, sizeof(buffer))) < 0)
-          {
-            sleep(1);
-            continue;
-          }
+  //     while (running && clients.size() > 0)
+  //     {
+  //       for (auto &[sockfd, cli] : clients)
+  //       {
+  //         bzero(buffer, 256);
+  //         if ((len = read(sockfd, buffer, sizeof(buffer))) < 0)
+  //         {
+  //           sleep(1);
+  //           continue;
+  //         }
 
-          cli.activity = time(0);
+  //         cli.activity = time(0);
 
-          len--;
-          buffer[len] = 0;
+  //         len--;
+  //         buffer[len] = 0;
 
-          // handle exit
-          if (!strncasecmp(buffer, "exit", 4))
-          {
-            close(sockfd);
-            clients.erase(sockfd);
-            continue;
-          }
-          printf("asd\n");
+  //         // handle exit
+  //         if (!strncasecmp(buffer, "exit", 4))
+  //         {
+  //           close(sockfd);
+  //           clients.erase(sockfd);
+  //           continue;
+  //         }
+  //         printf("asd\n");
 
-          Event event;
-          event.type = Event::MESSAGE;
-          event.sockfd = sockfd;
-          event.data = buffer;
-          event.len = len;
+  //         Event event;
+  //         event.type = Event::MESSAGE;
+  //         event.sockfd = sockfd;
+  //         event.data = buffer;
+  //         event.len = len;
 
-          callback(*this, event);
-        }
-      }
-    }
-  };
+  //         callback(*this, event);
+  //       }
+  //     }
+  //   }
+  // };
 
-  Event event;
-  event.type = Event::CONNECTION;
-  event.sockfd = new_socket;
+  //   Event event;
+  //   event.type = Event::CONNECTION;
+  //   event.sockfd = new_socket;
 
-  callback(*this, event);
+  //   callback(*this, event);
+  // }
+  // }
+  // ;
+
+  // timeouter = (std::thread)[&]
+  // {
+  //   // TODO maybe move to listener thread
+  //   while (running && clients.size() > 0)
+  //   {
+  //     for (auto c : clients)
+  //     {
+  //       if (c.time + TIMEOUT < time(0))
+  //       {
+  //         printf("connection timed out\n");
+  //         close(c.sockfd);
+  //         clients.erase(c);
+  //       }
+  //     }
+
+  //     sleep(1);
+  //   }
+  // };
 }
-}
-;
 
-// timeouter = (std::thread)[&]
-// {
-//   // TODO maybe move to listener thread
-//   while (running && clients.size() > 0)
-//   {
-//     for (auto c : clients)
-//     {
-//       if (c.time + TIMEOUT < time(0))
-//       {
-//         printf("connection timed out\n");
-//         close(c.sockfd);
-//         clients.erase(c);
-//       }
-//     }
-
-//     sleep(1);
-//   }
-// };
-}
-
-Server::~Server()
-{
+Server::~Server() {
   running = false;
   accepter.join();
 
   // Close Connections
-  clients.clear();
+  // clients.clear();
 
-  listener.join();
+  // listener.join();
   timeouter.join();
 
   close(sockfd);
 }
 
-void Server::send(int sockfd, void *data, unsigned long size)
-{
-  if (sockfd < 0)
-  {
-    for (auto [s, _] : clients)
-      send(s, data, size);
-  }
-  else
-  {
+void Server::send(int sockfd, void *data, unsigned long size) {
+  if (sockfd < 0) {
+    // for (auto [s, _] : clients)
+    // send(s, data, size);
+  } else {
     int n = write(sockfd, data, size);
     if (n != size)
       fprintf(stderr, "%s: failed to send message\n", __func__);

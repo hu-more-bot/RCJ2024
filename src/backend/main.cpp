@@ -17,9 +17,9 @@
 #include <queue>
 #include <string>
 
-#define MODEL_LLM "MODEL_PHI3cpu"
-#define MODEL_SD "MODEL_SDv2_1"
-#define MODEL_WHISPER "MODEL_WHISPER_BASE"
+#define MODEL_LLM "MODEL_PHI"
+#define MODEL_SD "MODEL_SD"
+#define MODEL_WHISPER "MODEL_WHISPER_SMALL"
 #define MODEL_PIPER "MODEL_PIPER_RYAN"
 
 #define AUDIO_DEVICE NULL
@@ -29,8 +29,7 @@
 
 volatile bool isRunning = true;
 
-struct Image
-{
+struct Image {
   unsigned char *data;
   uint16_t width, height;
   uint8_t channels;
@@ -49,20 +48,10 @@ void play(axMixer mixer, std::vector<int16_t> buffer);
 // Sleep
 void sleep(float amount);
 
-int main()
-{
-  Server s(8000, [&](Server &server, const Server::Event &event)
-           {
-    if (event.type == Server::Event::MESSAGE)
-      printf("%.*s\n", (int)event.len, event.data); });
-
-  while (1)
-    ;
-
+int main() {
   // Load Models
+  SD sd(getenv(MODEL_SD));
   LLM llm(getenv(MODEL_LLM), "../prompt.txt");
-  // SD sd(getenv(MODEL_SD));
-  SD sd("/home/booger_aids/Documents/models/sd.gguf");
   // sd.config.width = 256;
   // sd.config.height = 256;
 
@@ -79,8 +68,7 @@ int main()
   ImageQueue image;
 
   // Start Server
-  Server server(8000, [&](Server &server, const Server::Event &event)
-                {
+  Server server(8000, [&](Server &server, const Server::Event &event) {
     switch (event.type) {
     case Server::Event::MESSAGE: {
       if (!strncmp(event.data, "IMAGE", 5)) {
@@ -119,12 +107,12 @@ int main()
 
     default:
       break;
-    } });
+    }
+  });
 
   ax_debug("main", "started server");
 
-  std::thread painter([&]
-                      {
+  std::thread painter([&] {
     Image *img = NULL;
     while (isRunning) {
       // free previous image
@@ -145,7 +133,7 @@ int main()
           continue;
 
         memcpy(sd.config.prompt, img->path.c_str(),
-         std::min(128, (int)img->path.size()));
+               std::min(128, (int)img->path.size()));
 
         // Configure SD
         if (!img->data) {
@@ -158,8 +146,10 @@ int main()
             continue;
         }
 
-        // // STBIWDEF int stbi_write_png(char const *filename, int w, int h, int comp, const void *data, int stride_in_bytes);
-        // stbi_write_png("out.png", sd.result->width, sd.result->height, 3, sd.result->data, sd.config.width * 3);
+        // // STBIWDEF int stbi_write_png(char const *filename, int w, int h,
+        // int comp, const void *data, int stride_in_bytes);
+        // stbi_write_png("out.png", sd.result->width, sd.result->height, 3,
+        // sd.result->data, sd.config.width * 3);
 
         // TODO send image
 
@@ -171,12 +161,12 @@ int main()
         server.send(-1, (void *)id, 5 + 2 + 2 + 1 + width * height * channels);
       } else
         sleep(0.3f);
-    } });
+    }
+  });
 
   ax_debug("main", "started painter");
 
-  while (true)
-  {
+  while (true) {
     // Get User In
     std::string text = stt.listen();
     // printf("You:\n\e[0;92m");
@@ -185,7 +175,9 @@ int main()
     // fgets(text, sizeof(text), stdin);
     // printf("\e[39m");
 
-    if (!strncasecmp(text.c_str(), "headshot", 8) || !strncasecmp(text.c_str(), "bang", 4) || !strncasecmp(text.c_str(), "(gunshots)", 11))
+    if (!strncasecmp(text.c_str(), "headshot", 8) ||
+        !strncasecmp(text.c_str(), "bang", 4) ||
+        !strncasecmp(text.c_str(), "(gunshots)", 11))
       break;
 
     // printf("%s\n", text.c_str());
@@ -197,10 +189,9 @@ int main()
     // Generate Text
     unsigned int opened = 0;
     std::string message = "", command = "";
-    llm.reply(text, [&](std::string token)
-              {
-                printf("%s", token.c_str());
-                fflush(stdout);
+    llm.reply(text, [&](std::string token) {
+      printf("%s", token.c_str());
+      fflush(stdout);
       // parse tokens -> message & command(s)
       for (char c : token) {
         if (c == '[') {
@@ -218,7 +209,8 @@ int main()
           }
         } else
           (opened ? command : message) += c;
-      } });
+      }
+    });
 
     printf("\e[0;39m\n");
 
@@ -242,10 +234,8 @@ int main()
   return 0;
 }
 
-void process(ImageQueue &image, Server &server, const char *command)
-{
-  if (!strncmp(command, "PAINT", 5))
-  {
+void process(ImageQueue &image, Server &server, const char *command) {
+  if (!strncmp(command, "PAINT", 5)) {
     // Add image prompt to queue
     Image *img = new Image;
     img->data = NULL;
@@ -254,27 +244,22 @@ void process(ImageQueue &image, Server &server, const char *command)
     img->path = std::string(command + 7);
     image.push(img);
     ax_debug("main", "added to image queue (new size: %zu)", image.size());
-  }
-  else if (!strncmp(command, "PORTRAIT", 8))
-  {
+  } else if (!strncmp(command, "PORTRAIT", 8)) {
     // Send Image Request
     const char message[5] = {'I', 'M', 'R', 'E', 'Q'};
     server.send(-1, (void *)message, sizeof(message));
     // TODO send prompt or smthing
-  }
-  else
+  } else
     ax_warning("main", "unknown command");
 }
 
-void play(axMixer mixer, std::vector<int16_t> buffer)
-{
+void play(axMixer mixer, std::vector<int16_t> buffer) {
   auto id = axMixerLoad(mixer, 1, 22050, buffer.size(), buffer.data());
   axMixerPlay(mixer, id, 1);
   axMixerUnload(mixer, id);
 }
 
-void sleep(float amount)
-{
+void sleep(float amount) {
   float start = axClockNow();
   while (axClockNow() < start + amount)
     ;
