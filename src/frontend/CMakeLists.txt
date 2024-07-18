@@ -3,8 +3,10 @@ cmake_minimum_required(VERSION 3.5)
 set(SOURCES
     main.c
 
-    src/client.c
     src/yolo.c
+    
+    src/client.c
+    src/serial.c
 )
 
 set(LIBRARIES

@@ -6,48 +6,78 @@
 
 #include <math.h>
 
+#include "Artifex/log.h"
+#include "Artifex/renderer.h"
+#include "Artifex/vec.h"
 #include "callbacks.h"
+#include "image.h"
 
 #define ADDR "10.42.0.1"
 #define PORT 8000
 
 // Render Face with renderer while looking at lookat
 // [lookat: -1 left, 0 center, 1 right]
-// [textures: eye_left, eye_right, eyebrow_left, eyebrow_right]
-// TODO more textures, facial expressions, etc
-void renderFace(axRenderer renderer, unsigned int textures[4], float lookat,
-                float open) {
-  const float eyeMovement = 0.1f;
+// [state: idle (tracking), 'yes', 'no']
+void renderFace(axRenderer renderer, float lookat, uint8_t state) {
+  const axVector size = {0.23f, 0.3f};
+  const float movement = 0.1f;
+  const float scale = 0.3f;
+  const float round = 0.8f;
+  const float offset = 0.5f;
+
+  static float frameStart = -1;
+
+  // Timing
+  static float past = 0;
+  static float now = 0;
+  static float delta = 0;
+
+  past = now;
+  now = axClockNow();
+  delta = now - past;
+
+  static axVector prev, center = {};
+  static axVector target = {};
+
+  if (frameStart < 0)
+    frameStart = axClockNow();
+  else {
+    // TODO process frame
+  }
 
   struct axRendererDrawInfo drawInfo = {};
-  drawInfo.style = 2;
-  drawInfo.size = (axVector){0.3f - fabsf(eyeMovement * lookat), 0.3f * open};
+  drawInfo.style = 0;
+  drawInfo.corner[0] = drawInfo.corner[1] = drawInfo.corner[2] =
+      drawInfo.corner[3] = round;
+
+  static int aa;
+  switch (state) {
+  default:
+  case 0: // idle (tracking)
+    if ((int)axClockNow() % 3 == 0 && (int)axClockNow() != aa) {
+      aa = axClockNow();
+      center.x = center.x <= 0 ? 1 : -1;
+    }
+    break;
+  }
+
+  // Smoothing
+
+  // Smooth out movement
+  const float s = 0.1 * delta;
+  // pwm = (pwm * s_amount) + (prev * (100% - s_amount))
+  axVector value;
+  value.x = (center.x * s) + (prev.x * (1.0 - s));
+  value.y = (center.y * s) + (prev.y * (1.0 - s));
+  prev.x = value.x, prev.y = value.y;
 
   // Eyes
-  drawInfo.texture = textures[0];
-  drawInfo.center = (axVector){-0.5f + eyeMovement * lookat, 0.3f};
+  drawInfo.center = (axVector){value.x + offset, value.y};
+  drawInfo.size = size;
   axRendererDraw(renderer, &drawInfo);
 
-  drawInfo.texture = textures[1];
-  drawInfo.center = (axVector){0.5f + eyeMovement * lookat, 0.3f};
-  axRendererDraw(renderer, &drawInfo);
-
-  // Eyebrows
-  drawInfo.size = (axVector){0.3f, 0.3f};
-
-  drawInfo.texture = textures[2];
-  drawInfo.center = (axVector){-0.5f, 0.3f};
-  axRendererDraw(renderer, &drawInfo);
-
-  drawInfo.texture = textures[3];
-  drawInfo.center = (axVector){0.5f, 0.3f};
-  axRendererDraw(renderer, &drawInfo);
-
-  // Mouth
-  drawInfo.texture = textures[4];
-  drawInfo.center = (axVector){0.0f, -0.3f};
-  drawInfo.size = (axVector){0.3f * 4, 0.3f};
-  drawInfo.rotation = sin(axClockNow()) * 5;
+  drawInfo.center = (axVector){value.x - offset, value.y};
+  drawInfo.size = size;
   axRendererDraw(renderer, &drawInfo);
 }
 
@@ -120,7 +150,7 @@ void renderUI(axWindow window, axRenderer renderer, unsigned int textures[7],
     // axRendererDraw(renderer, &drawInfo);
 
     static int buttonState[4] = {};
-    buttonState[1] = clientIsConnected(session->client);
+    // buttonState[1] = clientIsConnected(session->client);
     buttonState[2] = 0;
     buttonState[3] = axWindowIsFullscreen(window);
 
@@ -141,10 +171,10 @@ void renderUI(axWindow window, axRenderer renderer, unsigned int textures[7],
           } break;
 
           case 1: {
-            if (!buttonState[1])
-              clientOpen(session->client, ADDR, PORT);
-            else
-              clientClose(session->client);
+            // if (!buttonState[1])
+            // clientOpen(session->client, ADDR, PORT);
+            // else
+            // clientClose(session->client);
           } break;
 
           case 2: {
@@ -212,7 +242,7 @@ int updateWindows(struct Session *session) {
 
   axRendererUpdate(session->renderer[0]);
   axRendererUpdate(session->renderer[1]);
-  axRendererClear(session->renderer[0], (axColor){1, 1, 1});
+  axRendererClear(session->renderer[0], (axColor){});
   axRendererClear(session->renderer[1], (axColor){});
 
   // Exit on [ESC]

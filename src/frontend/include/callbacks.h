@@ -154,10 +154,23 @@ void clientcb(const struct clientEvent *event, void *user_ptr) {
 
       session->image.refresh = 1;
       ax_debug("clientcb", "image refresh required");
+    } else if (!strncmp("TEXT", event->data, 4)) {
+      // Generated Text
+      float dur;
+      uint16_t len;
+
+      memcpy(&dur, &event->data[4], 4);
+      memcpy(&len, &event->data[8], 2);
+
+      char text[len];
+      memcpy(&text, &event->data[10], len);
+
+      float charTime = dur / (float)len;
+
+      // TODO move to main thread so
+      // it doesn't block communication
     } else
       ax_debug("clientcb", "incorrect message header");
-
-    // TODO expressions
   } break;
 
   default:

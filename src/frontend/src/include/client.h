@@ -29,16 +29,10 @@ typedef void (*clientCallback)(const struct clientEvent *, void *);
 int clientIsOK(client_t client);
 
 // Create Client
-int clientCreate(client_t *client);
+int clientCreate(client_t *clientconst, const char *address, int port);
 
 // Destroy Client
 void clientDestroy(client_t *client);
-
-// Open Connection
-int clientOpen(client_t client, const char *address, int port);
-
-// Close Connection
-void clientClose(client_t client);
 
 // Send Message
 int clientSend(client_t client, const char *message, unsigned long len);

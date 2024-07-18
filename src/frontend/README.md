@@ -12,9 +12,9 @@ This code runs on a [Dell Latitude 3140](https://www.dell.com/en-us/shop/cty/pdp
 
 ### Communication
 Sends:
-- **PERSON**: id (c[6]), position (f); location of person *if detected*
 - **IMAGE**: id (c[5]), width (u16), height (u16), channels (u8), data (uc[w * h * ch]); cropped image *if detected & requested*
 
 Accepts:
 - **IMREQ**: id (c[5]); image request
 - **IMAGE**: id (c[5]), width (u16), height (u16), channels (u8), data (uc[w * h * ch]); image to display
+- **TEXT**:  id (c[4]), dur (f), len (u16), data (uc[len]); audio duration & generated text

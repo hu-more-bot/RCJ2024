@@ -16,9 +16,9 @@
 
 // Simple Linux TCP Client
 struct Client {
-  int sockfd;
+  int fd;
 
-  int running, connected;
+  int running;
 
   clientCallback cb;
   void *user_ptr;
@@ -26,13 +26,9 @@ struct Client {
   pthread_t listener;
 };
 
-int clientIsOK(client_t client) {
-  if (!client || client->sockfd == 0)
-    return 0;
-  return 1;
-}
+int clientIsOK(client_t client) { return client && client->fd; }
 
-int clientCreate(client_t *client) {
+int clientCreate(client_t *client, const char *address, int port) {
   if (!client)
     return 1;
 
@@ -42,18 +38,42 @@ int clientCreate(client_t *client) {
     return 1;
   }
 
-  sock->sockfd = 0;
-  sock->running = sock->connected = 0;
+  sock->fd = 0;
+  sock->running = 0;
   sock->listener = 0;
   sock->user_ptr = NULL;
 
   // Open Socket
-  if ((sock->sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+  if ((sock->fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     free(sock);
     sock = NULL;
 
     ax_error(TAG, "failed to open socket");
     return 1;
+  }
+
+  // Get Host
+  struct hostent *server;
+  if ((server = gethostbyname(address)) == NULL) {
+    shutdown(sock->fd, SHUT_RDWR);
+
+    free(sock);
+    sock = NULL;
+
+    ax_error(TAG, "no such host");
+    return 1;
+  }
+
+  // Connect to Server
+  struct sockaddr_in serv_addr = {};
+  serv_addr.sin_family = AF_INET;
+  bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr,
+        server->h_length);
+
+  serv_addr.sin_port = htons(port);
+  if (connect(sock->fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+    ax_error(TAG, "failed to connect");
+    return 1; // failed to connect
   }
 
   ax_verbose(TAG, "initialized");
@@ -66,61 +86,22 @@ void clientDestroy(client_t *client) {
 
   clientStopListening(*client);
 
-  close((*client)->sockfd);
+  shutdown((*client)->fd, SHUT_RDWR);
+
+  close((*client)->fd);
   free(*client);
   *client = NULL;
 
   ax_verbose(TAG, "destroyed");
 }
 
-int clientOpen(client_t client, const char *address, int port) {
-  if (!clientIsOK(client) || client->connected)
-    return 1;
-
-  // Get Host
-  struct hostent *server;
-  if ((server = gethostbyname(address)) == NULL) {
-    ax_error(TAG, "no such host");
-    return 1; // no such host
-  }
-
-  // Connect to Server
-  struct sockaddr_in serv_addr = {};
-  serv_addr.sin_family = AF_INET;
-  bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr,
-        server->h_length);
-
-  serv_addr.sin_port = htons(port);
-  if (connect(client->sockfd, (struct sockaddr *)&serv_addr,
-              sizeof(serv_addr)) < 0) {
-    ax_error(TAG, "failed to connect");
-    return 1; // failed to connect
-  }
-  client->connected = 1;
-
-  ax_verbose(TAG, "connected");
-  return 0;
-}
-
-void clientClose(client_t client) {
-  if (!clientIsOK(client))
-    return;
-
-  clientStopListening(client);
-
-  shutdown(client->sockfd, SHUT_RDWR);
-  client->connected = 0;
-
-  ax_verbose(TAG, "closed");
-}
-
 int clientSend(client_t client, const char *message, unsigned long len) {
-  if (!clientIsOK(client) || !clientIsConnected(client)) {
+  if (!clientIsOK(client)) {
     ax_error(TAG, "invalid client");
     return 1;
   }
 
-  int n = write(client->sockfd, message, len);
+  int n = write(client->fd, message, len);
   if (n != len) {
     ax_error(TAG, "failed to send message");
     return 1;
@@ -128,13 +109,6 @@ int clientSend(client_t client, const char *message, unsigned long len) {
 
   // ax_verbose(TAG, "sent message '%s'", message);
   return 0;
-}
-
-int clientIsConnected(client_t client) {
-  if (!clientIsOK(client))
-    return 0;
-
-  return client->connected;
 }
 
 void *client___callback(void *user) {
@@ -147,7 +121,7 @@ void *client___callback(void *user) {
 
   while (client->running) {
     bzero(buffer, 256);
-    if ((len = read(client->sockfd, buffer, sizeof(buffer))) < 0) {
+    if ((len = read(client->fd, buffer, sizeof(buffer))) < 0) {
       sleep(1);
       continue;
     }
@@ -167,7 +141,7 @@ void *client___callback(void *user) {
 }
 
 int clientStartListening(client_t client, clientCallback cb, void *user_ptr) {
-  if (!clientIsOK(client) || !client->connected || client->running)
+  if (!clientIsOK(client) || client->running)
     return 1;
 
   client->cb = cb;

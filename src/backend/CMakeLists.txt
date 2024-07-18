@@ -16,7 +16,6 @@ set(SOURCES
     src/piper.cpp
   
     src/server.cpp
-    src/serial.cpp
 )
 
 # Libraries
