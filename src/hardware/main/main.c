@@ -46,28 +46,22 @@ int main() {
   gpio_set_dir(RELAY, GPIO_OUT);
   gpio_put(RELAY, 1);
 
-  servo_init(SERVO);
-  servo_setMillis(SERVO, 500);
+  gpio_init(SWITCH);
+  gpio_set_dir(SWITCH, GPIO_IN);
+  gpio_pull_up(SWITCH);
 
-  while (1)
-    tight_loop_contents();
+  gpio_init(LED);
+  gpio_set_dir(LED, GPIO_OUT);
+  gpio_put(LED, false);
 
-  // gpio_init(SWITCH);
-  // gpio_set_dir(SWITCH, GPIO_IN);
-  // gpio_pull_up(SWITCH);
+  while (gpio_get(SWITCH))
+    blink(LED);
 
-  // gpio_init(LED);
-  // gpio_set_dir(LED, GPIO_OUT);
-  // gpio_put(LED, false);
+  while (!gpio_get(SWITCH))
+    gpio_put(LED, true);
+  gpio_put(LED, false);
 
-  // while (gpio_get(SWITCH))
-  //   blink(LED);
-
-  // while (!gpio_get(SWITCH))
-  //   gpio_put(LED, true);
-  // gpio_put(LED, false);
-
-  // gpio_put(RELAY, true);
+  gpio_put(RELAY, true);
 
   // // Init Pose & Base
   // pose_init(SERVO);
