@@ -11,8 +11,10 @@ int main() {
 
   // Initialize
   axCameraCreate(&session.camera, 640, 480, 30);
-  yoloCreate(&session.yolo, getenv("MODEL_YOLOv7"),
-             getenv("MODEL_YOLOv7_PARAMS"));
+  yoloCreate(
+      &session.yolo,
+      "../../../../models/yolo/yolov7.onnx", // getenv("MODEL_YOLOv7"),
+      "../../../../models/yolo/yolov7.txt"); // getenv("MODEL_YOLOv7_PARAMS"));
 
   clientCreate(&session.client, "localhost", 8000);
 
@@ -64,7 +66,7 @@ int main() {
     // Update Emote Animation
 
     // Render Face UI
-    renderFace(session.renderer[0], sin(axClockNow()), 0);
+    renderFace(session.renderer[0], session.person, 0);
     renderUI(session.window[0], session.renderer[0], texUI, &session);
     // renderLoading(rnd_face, 1);
 

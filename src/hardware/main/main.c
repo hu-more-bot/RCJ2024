@@ -1,16 +1,12 @@
 // Robot
-// #include "pose.h"
-#include "pico/platform.h"
-#include "servo.h"
-// #include <anim.h>
-// #include <base.h>
+#include "pose.h"
 
 // PicoSDK
 // #include <boards/pico.h>
 #include <hardware/gpio.h>
 // #include <pico/multicore.h>
 // #include <pico/stdio.h>
-// #include <pico/time.h>
+#include <pico/time.h>
 
 // #include <stdio.h>
 // #include <stdlib.h>
@@ -24,17 +20,17 @@
 #define SERVO 0
 #define STEPPER 8
 
-// const pose_t pose[] = {
-//     // rest
-//     {0.7, 0.3, 0.8, 0.8,  // left hand
-//      0.3, 0.0, 0.2, 0.0}, // right hand
-//                           // armsup
-//     {0.3, 0.0, 0.2, 0.5,  // left hand
-//      0.3, 0.0, 0.2, 0.5}, // right hand
-// };
-// const size_t poses = 1;
+const pose_t pose[] = {
+    // rest
+    {0.7, 0.3, 0.8, 0.8,  // left hand
+     0.3, 0.0, 0.2, 0.0}, // right hand
+                          // armsup
+    {0.3, 0.0, 0.2, 0.5,  // left hand
+     0.3, 0.0, 0.2, 0.5}, // right hand
+};
+const size_t poses = 1;
 
-// void blink(int pin);
+void blink(int pin);
 // void core1();
 
 int main() {
@@ -44,7 +40,7 @@ int main() {
   // Arm System
   gpio_init(RELAY);
   gpio_set_dir(RELAY, GPIO_OUT);
-  gpio_put(RELAY, 1);
+  gpio_put(RELAY, 0);
 
   gpio_init(SWITCH);
   gpio_set_dir(SWITCH, GPIO_IN);
@@ -63,9 +59,9 @@ int main() {
 
   gpio_put(RELAY, true);
 
-  // // Init Pose & Base
-  // pose_init(SERVO);
-  // pose_set(pose[0]);
+  // Init Pose & Base
+  pose_init(SERVO);
+  pose_set(pose[0]);
 
   // // base_init(STEPPER);
 
@@ -73,25 +69,25 @@ int main() {
   // // base_step(1200, 1200);
 
   // // uint32_t state;
-  // while (true) {
-  //   int swon = gpio_get(SWITCH);
-  //   base_enable(swon, swon);
+  while (true) {
+    //   int swon = gpio_get(SWITCH);
+    //   base_enable(swon, swon);
 
-  //   // base_step(1, 1);
+    //   // base_step(1, 1);
 
-  //   pose_update();
-  // }
+    pose_update();
+  }
 
   // Disarm System
   gpio_put(RELAY, 0);
 }
 
-// void blink(int pin) {
-//   gpio_put(pin, true);
-//   sleep_ms(100);
-//   gpio_put(pin, false);
-//   sleep_ms(100);
-// }
+void blink(int pin) {
+  gpio_put(pin, true);
+  sleep_ms(100);
+  gpio_put(pin, false);
+  sleep_ms(100);
+}
 
 // void core1() {
 //   while (1) {

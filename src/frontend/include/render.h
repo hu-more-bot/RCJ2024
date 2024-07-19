@@ -36,7 +36,7 @@ void renderFace(axRenderer renderer, float lookat, uint8_t state) {
   now = axClockNow();
   delta = now - past;
 
-  static axVector prev, center = {};
+  static axVector prev, center;
   static axVector target = {};
 
   if (frameStart < 0)
@@ -54,30 +54,31 @@ void renderFace(axRenderer renderer, float lookat, uint8_t state) {
   switch (state) {
   default:
   case 0: // idle (tracking)
-    if ((int)axClockNow() % 3 == 0 && (int)axClockNow() != aa) {
-      aa = axClockNow();
-      center.x = center.x <= 0 ? 1 : -1;
-    }
+    // if ((int)axClockNow() % 3 == 0 && (int)axClockNow() != aa) {
+    // aa = axClockNow();
+    // center.x = center.x <= 0 ? 1 : -1;
+    // }
+    center.x = lookat;
     break;
   }
 
   // Smoothing
 
   // Smooth out movement
-  const float s = 0.1 * delta;
+  const float s = 0.8 * delta;
   // pwm = (pwm * s_amount) + (prev * (100% - s_amount))
   axVector value;
-  value.x = (center.x * s) + (prev.x * (1.0 - s));
+  float squish = 0;
+  value.x = LIMIT((center.x * s) + (prev.x * (1.0 - s)), -0.2f, 0.2f);
   value.y = (center.y * s) + (prev.y * (1.0 - s));
+  squish = value.x + prev.x;
   prev.x = value.x, prev.y = value.y;
+  drawInfo.size = size;
 
   // Eyes
-  drawInfo.center = (axVector){value.x + offset, value.y};
-  drawInfo.size = size;
+  drawInfo.center.x = value.x + offset;
   axRendererDraw(renderer, &drawInfo);
-
-  drawInfo.center = (axVector){value.x - offset, value.y};
-  drawInfo.size = size;
+  drawInfo.center.x = value.x - offset;
   axRendererDraw(renderer, &drawInfo);
 }
 

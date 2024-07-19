@@ -139,22 +139,26 @@ unsigned long yoloSize(yolo_t yolo) {
 
   OrtTypeInfo *typeInfo;
   if (yolo->ort->SessionGetInputTypeInfo(yolo->session, 0, &typeInfo)) {
-    // TODO
+    ax_error(TAG, "get_size: failed to get type info");
+    return 0;
   }
 
   const OrtTensorTypeAndShapeInfo *tensorInfo;
   if (yolo->ort->CastTypeInfoToTensorInfo(typeInfo, &tensorInfo)) {
-    // TODO
+    ax_error(TAG, "get_size: failed to get tensor info");
+    return 0;
   }
 
   unsigned long size;
   if (yolo->ort->GetDimensionsCount(tensorInfo, &size)) {
-    // TODO
+    ax_error(TAG, "get_size: failed to get dimesion count");
+    return 0;
   }
 
   long dims[size];
   if (yolo->ort->GetDimensions(tensorInfo, dims, size)) {
-    // TODO
+    ax_error(TAG, "get_size: failed to get dimensions");
+    return 0;
   }
 
   yolo->ort->ReleaseTypeInfo(typeInfo);
@@ -164,7 +168,8 @@ unsigned long yoloSize(yolo_t yolo) {
 
 unsigned long yoloDetect(yolo_t yolo, float *data, struct Result **results) {
   if (!results) {
-    // TODO shouldn't be NULL
+    ax_error(TAG, "detect: results pointer should be provided");
+    return 0;
   }
 
   // Create Memory Info
@@ -172,6 +177,8 @@ unsigned long yoloDetect(yolo_t yolo, float *data, struct Result **results) {
   if (yolo->ort->CreateCpuMemoryInfo(OrtArenaAllocator, OrtMemTypeDefault,
                                      &memory_info)) {
     // TODO failed to create memory info
+    ax_error(TAG, "detect: failed to get memory info");
+    return 0;
   }
 
   // Create Input Tensor
@@ -182,6 +189,8 @@ unsigned long yoloDetect(yolo_t yolo, float *data, struct Result **results) {
           memory_info, data, sizeof(float) * 1 * 640 * 640 * 3, shape, 4,
           ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT, &input)) {
     // TODO failed to create tensor
+    ax_error(TAG, "detect: failed to create tensor");
+    return 0;
   }
 
   // Free Memory Info
@@ -196,21 +205,29 @@ unsigned long yoloDetect(yolo_t yolo, float *data, struct Result **results) {
                      (const OrtValue *const *)&input, 1, output_names, 1,
                      &output)) {
     // TODO failed to run
+    ax_error(TAG, "detect: failed to run");
+    return 0;
   }
 
   OrtTensorTypeAndShapeInfo *info;
   if (yolo->ort->GetTensorTypeAndShape(output, &info)) {
     // TODO failed to get type/shape
+    ax_error(TAG, "detect: failed to get type/shape info");
+    return 0;
   }
 
   unsigned long size;
   if (yolo->ort->GetTensorShapeElementCount(info, &size)) {
     // TODO failed to get size
+    ax_error(TAG, "detect: failed to get shape count");
+    return 0;
   }
 
   float *ptr = NULL;
   if (yolo->ort->GetTensorMutableData(output, (void **)&ptr)) {
     // TODO failed to get data
+    ax_error(TAG, "detect: failed to get data");
+    return 0;
   }
 
   // Get Dimensions / Shape
@@ -219,15 +236,21 @@ unsigned long yoloDetect(yolo_t yolo, float *data, struct Result **results) {
     unsigned long size;
     if (yolo->ort->GetDimensionsCount(info, &size)) {
       // TODO
+      ax_error(TAG, "detect: failed to get dimension count");
+      return 0;
     }
 
     if (size != 2) {
       // TODO should be 2
+      ax_error(TAG, "detect: should not be 2");
+      return 0;
     }
 
     long dims[size];
     if (yolo->ort->GetDimensions(info, dims, size)) {
       // TODO
+      ax_error(TAG, "detect: failed to get dimensions");
+      return 0;
     }
 
     count = dims[0];
@@ -235,6 +258,8 @@ unsigned long yoloDetect(yolo_t yolo, float *data, struct Result **results) {
 
     if (elements != 7) {
       // TODO should be 7
+      ax_error(TAG, "detect: should be 7");
+      return 0;
     }
   }
 
