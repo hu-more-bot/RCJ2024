@@ -2,27 +2,9 @@
 This program runs the heavy AI models (LLM, SD, STT, TTS) and controls the movement of the robot
 
 ## Hardware
-This code runs on a [HP Victus 16](https://www.hp.com/us-en/shop/mdp/victus/victus-16) Laptop featuring a powerful [NVIDIA RTX 3060](https://www.nvidia.com/en-eu/geforce/graphics-cards/30-series/rtx-3060-3060ti/) GPU
+This code runs on a HP ~~Victus~~ Omen 16 Laptop featuring a powerful NVIDIA RTX ~~3060~~ 4080 GPU
 
 ## Software
-
-### Setup
-
-Init Git LFS
-```bash
-sudo apt install git-lfs
-git lfs install
-```
-
-Clone Repo
-```bash
-git clone https://github.com/hu-more-bot/rcj2024
-```
-
-Install Required Packages:
-```bash
-sudo apt install libopenal1
-```
 
 ### Libraries
 - LLM: [ONNX Runtime GenAI](https://github.com/microsoft/onnxruntime-genai)

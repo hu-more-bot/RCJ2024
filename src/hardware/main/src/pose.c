@@ -8,7 +8,7 @@
 #define LIMIT(x, min, max) (MAX(MIN(x, max), min))
 #define PERCENT(x) (LIMIT(x, 0, 1))
 
-#define SMOOTHING 0.01
+#define SMOOTHING 0.8
 
 // Pose Config
 struct {

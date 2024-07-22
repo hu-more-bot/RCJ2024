@@ -13,7 +13,7 @@ struct {
   int speed;
 
   int isInit;
-} _base = {0, 50, 0};
+} _base = {0, 700, 0};
 
 void base_init(int startPin) {
   if (_base.isInit)
@@ -49,10 +49,10 @@ void base_step(int left, int right) {
   // Step Motors
   for (int i = 0; i < MAX(abs(left), abs(right)); i++) {
     // Pulse
-    if (abs(right) > i)
+    if (abs(left) > i)
       gpio_put(_base.startPin + 2, true);
 
-    if (abs(left) > i)
+    if (abs(right) > i)
       gpio_put(_base.startPin + 5, true);
 
     sleep_us(_base.speed);

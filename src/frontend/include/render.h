@@ -236,8 +236,8 @@ void renderLoading(axRenderer renderer, int enable) {
 
 // do not confuse with windows update
 int updateWindows(struct Session *session) {
-  int exit =
-      axWindowUpdate(session->window[0]) && axWindowUpdate(session->window[1]);
+  int exit = axWindowUpdate(
+      session->window[0]); // && axWindowUpdate(session->window[1]);
 
   static int fullscreenButtonDown[2];
 

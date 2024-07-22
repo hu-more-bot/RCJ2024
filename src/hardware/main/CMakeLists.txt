@@ -1,4 +1,4 @@
-add_executable(main main.c src/pose.c)
+add_executable(main main.c src/pose.c src/base.c)
 
 target_link_libraries(main pico_stdlib servo pico_stdlib pico_multicore)
 target_include_directories(main PUBLIC "include")

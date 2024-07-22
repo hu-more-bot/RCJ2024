@@ -1,4 +1,5 @@
 // Robot
+#include "base.h"
 #include "pose.h"
 
 // PicoSDK
@@ -22,13 +23,13 @@
 
 const pose_t pose[] = {
     // rest
-    {0.7, 0.3, 0.8, 0.8,  // left hand
-     0.3, 0.0, 0.2, 0.0}, // right hand
-                          // armsup
-    {0.3, 0.0, 0.2, 0.5,  // left hand
-     0.3, 0.0, 0.2, 0.5}, // right hand
+    {0.3, 0.0, 0.25, 0.7,  // right hand
+     0.3, 0.3, 0.25, 0.7}, // left hand
+                           // armsup
+    {0.5, 0.0, 0.25, 0.7,  // right hand
+     0.3, 0.3, 0.25, 0.7}  // left hand
 };
-const size_t poses = 1;
+const size_t poses = sizeof(pose) / sizeof(*pose);
 
 void blink(int pin);
 // void core1();
@@ -60,20 +61,38 @@ int main() {
   gpio_put(RELAY, true);
 
   // Init Pose & Base
+  base_init(STEPPER);
+
+  base_speed(1000);
+  base_step(1300 * 5.5, 1300 * 5.5);
+  base_step(1300, -1300);
+  sleep_ms(60 * 1000);
+  base_step(1300, -1300);
+  base_step(1300 * 5.5, 1300 * 5.5);
+  while (1)
+    ;
+  // base_step(1600 * 2, 1600 * 2);
+  // base_step(1600 * 2, -1600 * 2);
+
+  // int state = 0;
+
   pose_init(SERVO);
   pose_set(pose[0]);
 
-  // // base_init(STEPPER);
-
-  // // base_speed(700);
-  // // base_step(1200, 1200);
-
-  // // uint32_t state;
+  uint32_t state;
+  int t = 0;
   while (true) {
-    //   int swon = gpio_get(SWITCH);
-    //   base_enable(swon, swon);
+    int now = (int)(to_ms_since_boot(get_absolute_time()) / 1000.0f);
+    if (now % 5 == 0 && t != now) {
+      t = now;
+      state = !state;
+      pose_set(pose[state]);
+    }
 
-    //   // base_step(1, 1);
+    // //   int swon = gpio_get(SWITCH);
+    // //   base_enable(swon, swon);
+
+    // //   // base_step(1, 1);
 
     pose_update();
   }
